@@ -1,0 +1,205 @@
+#!/usr/bin/env python
+
+import argparse
+import glob
+import os.path
+import platform
+import re
+import subprocess
+import sys
+
+DEFAULT_REMOTE = 'clovar'
+CURRENT_STABLE = 'wheezy'
+PYARCH_TO_DEBARCH = {
+	'i386': 'i386',
+	'x86_64': 'amd64'
+}
+
+def run(cmd):
+	p = subprocess.Popen(cmd,
+		stdout=subprocess.PIPE,
+		stderr=subprocess.PIPE)
+	p.wait()
+
+	if p.returncode != 0:
+		raise Exception('`%s` exited with %d' % (' '.join(cmd), p.returncode))
+
+	return p.communicate()[0]
+
+def check_run(args):
+	print 'I: running `%s`' % ' '.join(args)
+
+	try:
+		p = subprocess.Popen(args)
+		p.wait()
+		if p.returncode != 0:
+			sys.exit(p.returncode)
+	finally:
+		p.wait()
+
+class Dists(object):
+	arch = PYARCH_TO_DEBARCH[platform.machine()]
+	dists = {}
+	default = None
+
+	def __init__(self):
+		envs = run(['schroot', '-l', '--all-source-chroots'])
+		envs = [e.replace('source:', '').replace('-sbuild', '')
+			for e in envs.split('\n')
+			if e.endswith('sbuild')]
+
+		for e in envs:
+			es = e.split('-')
+			self.dists.setdefault(es[0], set()).add(es[1])
+			if es == [CURRENT_STABLE, self.arch]:
+				self.default = es
+
+		if not self.default:
+			raise Exception('Default dist %s-%s not found' % (CURRENT_STABLE, self.arch))
+
+	def dump(self):
+		print 'Available dists (*default):'
+		for d in self.get_all():
+			star = '*' if d == self.default else ''
+			print '	%s-%s%s' % (d[0], d[1], star)
+		sys.exit(0)
+
+	def get_all(self):
+		all = []
+		for dist, archs in self.dists.iteritems():
+			for arch in archs:
+				all.append([dist, arch])
+		return all
+
+	def get(self, dists):
+		ds = []
+
+		if not dists:
+			ds.append(self.default)
+		else:
+			for dist in dists:
+				parts = dist.split('-')
+				parts.append('')
+
+				archs = self.dists.get(parts[0], None)
+				if not archs:
+					raise Exception('Unknown dist: %s' % dist)
+
+				if not parts[1]:
+					use = archs
+				else:
+					use = [a for a in archs if parts[1] == a]
+
+				ds += [(parts[0], u) for u in use]
+
+		return ds
+
+class Remotes(object):
+	hosts = []
+	default = None
+
+	def __init__(self):
+		hosts = run(['dput', '--host-list'])
+		for h in hosts.split('\n'):
+			if len(h.strip()) == 0 or 'Default Method' in h:
+				continue
+			hh = h.split('  ')[0].split(' => ')[0]
+			if hh == DEFAULT_REMOTE:
+				self.default = hh
+			self.hosts.append(hh)
+
+		if not self.default:
+			raise Exception('Default remote %s not found' % DEFAULT_REMOTE)
+
+	def dump(self):
+		print 'Available remotes (*default):'
+		for h in self.hosts:
+			star = '*' if h == self.default else ''
+			print '	%s%s' % (h, star)
+		sys.exit(0)
+
+	def get(self, rs):
+		hosts = []
+
+		if not rs:
+			hosts.append(self.default)
+		else:
+			for h in self.hosts:
+				if h in rs:
+					hosts.append(h)
+
+		return hosts
+
+def update_all():
+	for d in dists.get_all():
+		check_run(['sudo', 'sbuild-update', '-udcar', '--arch', d[1], d[0]])
+	sys.exit(0)
+
+def find_changes_file():
+	files = glob.glob('../%s*.changes' % pkg)
+	if not files:
+		raise Exception('Changes file for %s not found' % pkg)
+
+	return files[0]
+
+def rm_gen_files(changes):
+	with open(changes) as f:
+		ch = f.read()
+
+	fs = list([changes] +
+		['../%s' % f for f in re.findall(r'\w{32} \d* \w* \w* (.*)', ch)] +
+		glob.glob('../%s*.build' % pkg) +
+		glob.glob('../%s*.upload' % pkg))
+	for f in fs:
+		os.unlink(f)
+
+dists = Dists()
+remotes = Remotes()
+
+parser = argparse.ArgumentParser(description='Build a Debian package and dput it')
+parser.add_argument(
+	'-d', '--dist',
+	type=str,
+	action='append',
+	help='which distro to use (may be given multiple times); '+
+		'use just the bare dist name to build for all architectures')
+parser.add_argument(
+	'--list-dists',
+	action='store_true',
+	help='list all dists known to sbuild')
+parser.add_argument(
+	'-r', '--remote',
+	type=str,
+	action='append',
+	help='which remote to use (may be given multiple times)')
+parser.add_argument(
+	'--list-remotes',
+	action='store_true',
+	help='list all remotes known to dput')
+parser.add_argument(
+	'-u', '--update',
+	action='store_true',
+	help='perform apt-get upgrades in all the sbuild envs')
+
+args = parser.parse_args()
+
+if args.list_dists:
+	dists.dump()
+if args.list_remotes:
+	remotes.dump()
+if args.update:
+	update_all()
+
+with open('debian/control') as f:
+	head = f.readline().strip()
+pkg = head.split(':')[1].strip()
+
+ds = dists.get(args.dist)
+rs = remotes.get(args.remote)
+
+for d in ds:
+	check_run(['sbuild', '--source', '--arch', d[1], '--dist', d[0]])
+	changes = find_changes_file()
+	for r in rs:
+		check_run(['dput', r, changes])
+	rm_gen_files(changes)
