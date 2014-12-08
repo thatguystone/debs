@@ -1,0 +1,5 @@
+debs (1.0.0) UNRELEASED; urgency=medium
+
+  * Initial release.
+
+ -- Andrew Stone <andrew@clovar.com>  Mon, 08 Dec 2014 15:01:39 -0500

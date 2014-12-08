@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 
-DEFAULT_REMOTE = 'clovar'
+DEFAULT_REMOTE = 'default'
 CURRENT_STABLE = 'wheezy'
 PYARCH_TO_DEBARCH = {
 	'i386': 'i386',
@@ -38,59 +38,46 @@ def check_run(args):
 		p.wait()
 
 class Dists(object):
-	arch = PYARCH_TO_DEBARCH[platform.machine()]
-	dists = {}
-	default = None
+	default = '%s-%s' % (CURRENT_STABLE, PYARCH_TO_DEBARCH[platform.machine()])
+	dists = set()
 
 	def __init__(self):
-		envs = run(['schroot', '-l', '--all-source-chroots'])
-		envs = [e.replace('source:', '').replace('-sbuild', '')
+		envs = run(['schroot', '-l', '--all'])
+		envs = [e.replace('source:', '').replace('-sbuild', '').replace('chroot:', '')
 			for e in envs.split('\n')
 			if e.endswith('sbuild')]
 
 		for e in envs:
-			es = e.split('-')
-			self.dists.setdefault(es[0], set()).add(es[1])
-			if es == [CURRENT_STABLE, self.arch]:
-				self.default = es
+			self.dists.add(e)
 
-		if not self.default:
-			raise Exception('Default dist %s-%s not found' % (CURRENT_STABLE, self.arch))
+		if not self.dists:
+			raise Exception('no sbuild environments found')
+
+		if self.default not in self.dists:
+			self.default = self.dists[0]
 
 	def dump(self):
 		print 'Available dists (*default):'
 		for d in self.get_all():
 			star = '*' if d == self.default else ''
-			print '	%s-%s%s' % (d[0], d[1], star)
+			print '	%s%s' % (d, star)
 		sys.exit(0)
 
 	def get_all(self):
-		all = []
-		for dist, archs in self.dists.iteritems():
-			for arch in archs:
-				all.append([dist, arch])
-		return all
+		return self.dists
 
 	def get(self, dists):
-		ds = []
+		ds = set()
 
 		if not dists:
-			ds.append(self.default)
+			ds.add(self.default)
+		elif dists == 'all':
+			ds = self.get_all()
 		else:
 			for dist in dists:
-				parts = dist.split('-')
-				parts.append('')
-
-				archs = self.dists.get(parts[0], None)
-				if not archs:
-					raise Exception('Unknown dist: %s' % dist)
-
-				if not parts[1]:
-					use = archs
-				else:
-					use = [a for a in archs if parts[1] == a]
-
-				ds += [(parts[0], u) for u in use]
+				for d in self.dists:
+					if d.startswith(dist) or d.endswith(dist):
+						ds.add(d)
 
 		return ds
 
@@ -135,14 +122,14 @@ def update_all():
 		check_run(['sudo', 'sbuild-update', '-udcar', '--arch', d[1], d[0]])
 	sys.exit(0)
 
-def find_changes_file():
+def find_changes_file(pkg):
 	files = glob.glob('../%s*.changes' % pkg)
 	if not files:
 		raise Exception('Changes file for %s not found' % pkg)
 
 	return files[0]
 
-def rm_gen_files(changes):
+def rm_gen_files(pkg, changes):
 	with open(changes) as f:
 		ch = f.read()
 
@@ -151,6 +138,7 @@ def rm_gen_files(changes):
 		glob.glob('../%s*.build' % pkg) +
 		glob.glob('../%s*.upload' % pkg))
 	for f in fs:
+		print 'removing %s' % f
 		os.unlink(f)
 
 dists = Dists()
@@ -158,11 +146,15 @@ remotes = Remotes()
 
 parser = argparse.ArgumentParser(description='Build a Debian package and dput it')
 parser.add_argument(
+	'packages', metavar='PACKAGE[.dsc]', type=str, nargs='*',
+	help='which package(s) to build')
+parser.add_argument(
 	'-d', '--dist',
 	type=str,
 	action='append',
-	help='which distro to use (may be given multiple times); '+
-		'use just the bare dist name to build for all architectures')
+	help='which distro to use (may be given multiple times). '+
+		'use "all" to build in all. '+
+		'otherwise, does prefix/suffix matching on the given values')
 parser.add_argument(
 	'--list-dists',
 	action='store_true',
@@ -183,6 +175,13 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+if os.path.exists('.debs'):
+	with open('.debs') as f:
+		parser.parse_args(f.read().split(), namespace=args)
+
+print args
+sys.exit(1)
+
 if args.list_dists:
 	dists.dump()
 if args.list_remotes:
@@ -190,16 +189,30 @@ if args.list_remotes:
 if args.update:
 	update_all()
 
-with open('debian/control') as f:
-	head = f.readline().strip()
-pkg = head.split(':')[1].strip()
+pkgs = []
+for pkg in args.packages:
+	pkgs.append((pkg, pkg.split('_')[0]))
+
+if not pkgs:
+	if not os.path.isfile('debian/control'):
+		raise Exception('No package given and debian/control not found')
+	with open('debian/control') as f:
+		head = f.readline().strip()
+	pkg = head.split(':')[1].strip()
+	pkgs.append(('.', pkg))
+
+for pkg in pkgs:
+	if not os.path.exists(pkg[0]):
+		raise Exception("Package %s not found" % pkg)
 
 ds = dists.get(args.dist)
 rs = remotes.get(args.remote)
 
-for d in ds:
-	check_run(['sbuild', '--source', '--arch', d[1], '--dist', d[0]])
-	changes = find_changes_file()
-	for r in rs:
-		check_run(['dput', r, changes])
-	rm_gen_files(changes)
+for pkg in pkgs:
+	for d in ds:
+		parts = d.split('-')
+		check_run(['sbuild', '--source', '--arch', parts[1], '--dist', parts[0], pkg[0]])
+		changes = find_changes_file(pkg[1])
+		for r in rs:
+			check_run(['dput', r, changes])
+		rm_gen_files(pkg[1], changes)

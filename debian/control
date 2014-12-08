@@ -1,0 +1,19 @@
+Source: debs
+Maintainer: Andrew Stone <andrew@clovar.com>
+Section: devel
+Priority: optional
+Standards-Version: 3.9.6
+X-Python-Version: >= 2.6
+Build-Depends:
+	debhelper (>= 9),
+	python,
+	dh-python
+
+Package: debs
+Architecture: any
+Depends:
+	${misc:Depends},
+	${python:Depends}
+Description: For building your .debs
+	Automates building .deb files locally in a bunch of different environments
+	and pushing them to a remote repo with dput.
