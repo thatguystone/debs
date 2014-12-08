@@ -122,23 +122,21 @@ def update_all():
 		check_run(['sudo', 'sbuild-update', '-udcar', '--arch', d[1], d[0]])
 	sys.exit(0)
 
-def find_changes_file(pkg):
-	files = glob.glob('../%s*.changes' % pkg)
+def find_changes_file(outdir, pkg):
+	files = glob.glob('%s/%s*.changes' % (outdir, pkg))
 	if not files:
 		raise Exception('Changes file for %s not found' % pkg)
-
 	return files[0]
 
-def rm_gen_files(pkg, changes):
+def rm_gen_files(outdir, pkg, changes):
 	with open(changes) as f:
 		ch = f.read()
 
 	fs = list([changes] +
-		['../%s' % f for f in re.findall(r'\w{32} \d* \w* \w* (.*)', ch)] +
-		glob.glob('../%s*.build' % pkg) +
-		glob.glob('../%s*.upload' % pkg))
+		['%s/%s' % (outdir, f) for f in re.findall(r'\w{32} \d* \w* \w* (.*)', ch)] +
+		glob.glob('%s/%s*.build' % (outdir, pkg)) +
+		glob.glob('%s/%s*.upload' % (outdir, pkg)))
 	for f in fs:
-		print 'removing %s' % f
 		os.unlink(f)
 
 dists = Dists()
@@ -179,9 +177,6 @@ if os.path.exists('.debs'):
 	with open('.debs') as f:
 		parser.parse_args(f.read().split(), namespace=args)
 
-print args
-sys.exit(1)
-
 if args.list_dists:
 	dists.dump()
 if args.list_remotes:
@@ -190,29 +185,34 @@ if args.update:
 	update_all()
 
 pkgs = []
+
+if not args.packages:
+	args.packages = ['.']
+
 for pkg in args.packages:
-	pkgs.append((pkg, pkg.split('_')[0]))
+	if not os.path.exists(pkg):
+		raise Exception("Package %s not found" % pkg[0])
 
-if not pkgs:
-	if not os.path.isfile('debian/control'):
-		raise Exception('No package given and debian/control not found')
-	with open('debian/control') as f:
-		head = f.readline().strip()
-	pkg = head.split(':')[1].strip()
-	pkgs.append(('.', pkg))
-
-for pkg in pkgs:
-	if not os.path.exists(pkg[0]):
-		raise Exception("Package %s not found" % pkg)
+	if pkg.endswith('.dsc'):
+		pkgs.append((pkg, pkg.split('_')[0]))
+	else:
+		ctrl = '%s/debian/control' % pkg
+		if not os.path.isfile(ctrl):
+			raise Exception('%s not found' % ctrl)
+		with open(ctrl) as f:
+			head = f.readline().strip()
+		name = head.split(':')[1].strip()
+		pkgs.append((pkg, name))
 
 ds = dists.get(args.dist)
 rs = remotes.get(args.remote)
 
 for pkg in pkgs:
+	outdir = os.path.abspath('%s/..' % pkg[0])
 	for d in ds:
 		parts = d.split('-')
 		check_run(['sbuild', '--source', '--arch', parts[1], '--dist', parts[0], pkg[0]])
-		changes = find_changes_file(pkg[1])
+		changes = find_changes_file(outdir, pkg[1])
 		for r in rs:
 			check_run(['dput', r, changes])
-		rm_gen_files(pkg[1], changes)
+		rm_gen_files(outdir, pkg[1], changes)
