@@ -14,6 +14,16 @@ PYARCH_TO_DEBARCH = {
 	'i386': 'i386',
 	'x86_64': 'amd64'
 }
+GEN_GLOBS = [
+	'*.build',
+	'*.changes',
+	'*.deb',
+	'*.dsc',
+	'*.tar.gz',
+	'*.tar.xz',
+	'*.build',
+	'*.upload',
+]
 
 def run(cmd):
 	p = subprocess.Popen(cmd,
@@ -128,6 +138,12 @@ def find_changes_file(outdir, pkg):
 		raise Exception('Changes file for %s not found' % pkg)
 	return files[0]
 
+def clean():
+	for g in GEN_GLOBS:
+		for f in glob.glob(g):
+			os.unlink(f)
+	sys.exit(0)
+
 def rm_gen_files(outdir, pkg, changes):
 	with open(changes) as f:
 		ch = f.read()
@@ -146,6 +162,10 @@ parser = argparse.ArgumentParser(description='Build a Debian package and dput it
 parser.add_argument(
 	'packages', metavar='PACKAGE[.dsc]', type=str, nargs='*',
 	help='which package(s) to build')
+parser.add_argument(
+	'-c', '--clean',
+	action='store_true',
+	help='clean up all debian-generated files in this directory')
 parser.add_argument(
 	'-d', '--dist',
 	type=str,
@@ -172,6 +192,9 @@ parser.add_argument(
 	help='perform apt-get upgrades in all the sbuild envs')
 
 args = parser.parse_args()
+
+if args.clean:
+	clean()
 
 if os.path.exists('.debs'):
 	with open('.debs') as f:
