@@ -71,7 +71,7 @@ class Dists(object):
 
 		if not dists:
 			ds.add(self.default)
-		elif dists == 'all':
+		elif 'all' in dists:
 			ds = self.get_all()
 		else:
 			for dist in dists:
@@ -191,7 +191,7 @@ if not args.packages:
 
 for pkg in args.packages:
 	if not os.path.exists(pkg):
-		raise Exception("Package %s not found" % pkg[0])
+		raise Exception("Package %s not found" % pkg)
 
 	if pkg.endswith('.dsc'):
 		pkgs.append((pkg, pkg.split('_')[0]))
@@ -206,6 +206,11 @@ for pkg in args.packages:
 
 ds = dists.get(args.dist)
 rs = remotes.get(args.remote)
+
+if not ds:
+	raise Exception('No dists matched')
+if not rs:
+	raise Exception('No remotes matched')
 
 for pkg in pkgs:
 	outdir = os.path.abspath('%s/..' % pkg[0])

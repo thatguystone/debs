@@ -9,7 +9,7 @@ This is a wrapper around sbuild and dput, but it automates it all for you.
 The configuration file, named `.debs`, contains default arguments to pass to `debs`. The arguments may be newline separated, if you wish. For example:
 
 ````
--d wheezy- -d jessie-
+-d wheezy- -d -i386
 -r deb-host
 pkg1
 pkg2
