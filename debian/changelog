@@ -1,4 +1,10 @@
-debs (1.0.0) UNRELEASED; urgency=medium
+debs (1.0.1) all; urgency=medium
+
+  * Make the command a little friendlier
+
+ -- Andrew Stone <andrew@clovar.com>  Wed, 21 Jan 2015 18:47:07 -0500
+
+debs (1.0.0) all; urgency=medium
 
   * Initial release.
 
