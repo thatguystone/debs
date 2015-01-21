@@ -69,8 +69,8 @@ class Dists(object):
 	def dump(self):
 		print 'Available dists (*default):'
 		for d in self.get_all():
-			star = '*' if d == self.default else ''
-			print '	%s%s' % (d, star)
+			star = '*' if d == self.default else ' '
+			print '   %s%s' % (star, d)
 		sys.exit(0)
 
 	def get_all(self):
@@ -100,9 +100,9 @@ class Remotes(object):
 		for h in hosts.split('\n'):
 			if len(h.strip()) == 0 or 'Default Method' in h:
 				continue
-			hh = h.split('  ')[0].split(' => ')[0]
-			if hh == DEFAULT_REMOTE:
-				self.default = hh
+			hh = h.split('  ')[0].split(' => ')
+			if hh[0] == DEFAULT_REMOTE:
+				self.default = hh[0]
 			self.hosts.append(hh)
 
 		if not self.default:
@@ -111,8 +111,8 @@ class Remotes(object):
 	def dump(self):
 		print 'Available remotes (*default):'
 		for h in self.hosts:
-			star = '*' if h == self.default else ''
-			print '	%s%s' % (h, star)
+			star = '*' if h[0] == self.default else ' '
+			print '   %s%s (%s)' % (star, h[0], h[1])
 		sys.exit(0)
 
 	def get(self, rs):
@@ -122,8 +122,8 @@ class Remotes(object):
 			hosts.append(self.default)
 		else:
 			for h in self.hosts:
-				if h in rs:
-					hosts.append(h)
+				if h[0] in rs:
+					hosts.append(h[0])
 
 		return hosts
 
