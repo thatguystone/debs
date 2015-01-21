@@ -235,6 +235,18 @@ if not ds:
 if not rs:
 	raise Exception('No remotes matched')
 
+print 'Going to build:'
+for pkg in pkgs:
+	print '    `%s` for' % pkg[1]
+	for d in ds:
+		print '        %s' % d
+
+print
+res = raw_input('Confirm? [y/N] ')
+if res != 'y':
+	print 'Aborting...'
+	sys.exit(1)
+
 for pkg in pkgs:
 	outdir = os.path.abspath('%s/..' % pkg[0])
 	for d in ds:
