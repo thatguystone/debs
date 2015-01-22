@@ -15,14 +15,14 @@ PYARCH_TO_DEBARCH = {
 	'x86_64': 'amd64'
 }
 GEN_GLOBS = [
-	'*.build',
-	'*.changes',
-	'*.deb',
-	'*.dsc',
-	'*.tar.gz',
-	'*.tar.xz',
-	'*.build',
-	'*.upload',
+	'../*_*.build',
+	'../*_*.changes',
+	'../*_*.deb',
+	'../*_*.dsc',
+	'../*_*.tar.gz',
+	'../*_*.tar.xz',
+	'../*_*.build',
+	'../*_*.upload',
 ]
 
 def run(cmd):
