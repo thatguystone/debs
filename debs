@@ -43,9 +43,29 @@ def check_run(args):
 		p = subprocess.Popen(args)
 		p.wait()
 		if p.returncode != 0:
-			sys.exit(p.returncode)
+			raise RunException(p.returncode)
 	finally:
 		p.wait()
+
+def run_sbuild(arch, dist, pkg, pkg_name):
+	while True:
+		try:
+			check_run(['sbuild', '--source', '--arch', arch, '--dist', dist, pkg])
+			return
+		except RunException as e:
+			res = raw_input(
+				'E: `%s` on %s-%s failed with exit code %d. '
+				'Try again? [y/N] '
+					% (pkg_name, dist, arch, e.code))
+			if res != 'y':
+				raise
+
+class RunException(Exception):
+	def __init__(self, code):
+		self.code = code
+
+	def __str__(self):
+		return 'Command exited with status: %d' % self.code
 
 class Dists(object):
 	default = '%s-%s' % (CURRENT_STABLE, PYARCH_TO_DEBARCH[platform.machine()])
@@ -224,7 +244,7 @@ if not args.packages:
 
 for pkg in args.packages:
 	if not os.path.exists(pkg):
-		raise Exception("Package %s not found" % pkg)
+		raise Exception('Package %s not found' % pkg)
 
 	if pkg.endswith('.dsc'):
 		pkgs.append((pkg, pkg.split('_')[0]))
@@ -253,7 +273,7 @@ for pkg in pkgs:
 	outdir = os.path.abspath('%s/..' % pkg[0])
 	for d in ds:
 		parts = d.split('-')
-		check_run(['sbuild', '--source', '--arch', parts[1], '--dist', parts[0], pkg[0]])
+		run_sbuild(parts[1], parts[0], pkg[0], pkg[1])
 		changes = find_changes_file(outdir, pkg[1])
 		for r in rs:
 			check_run(['dput', r, changes])
