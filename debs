@@ -127,9 +127,10 @@ class Remotes(object):
 
 		return hosts
 
-def update_all():
-	for d in dists.get_all():
-		check_run(['sudo', 'sbuild-update', '-udcar', '--arch', d[1], d[0]])
+def update(dists):
+	for d in dists:
+		parts = d.split('-')
+		check_run(['sudo', 'sbuild-update', '-udcar', '--arch', parts[1], parts[0]])
 	sys.exit(0)
 
 def find_changes_file(outdir, pkg):
@@ -189,7 +190,7 @@ parser.add_argument(
 parser.add_argument(
 	'-u', '--update',
 	action='store_true',
-	help='perform apt-get upgrades in all the sbuild envs')
+	help='perform apt-get upgrades in the matched dists')
 
 args = parser.parse_args()
 
@@ -204,8 +205,17 @@ if args.list_dists:
 	dists.dump()
 if args.list_remotes:
 	remotes.dump()
+
+ds = dists.get(args.dist)
+rs = remotes.get(args.remote)
+
+if not ds:
+	raise Exception('No dists matched')
+if not rs:
+	raise Exception('No remotes matched')
+
 if args.update:
-	update_all()
+	update(ds)
 
 pkgs = []
 
@@ -226,14 +236,6 @@ for pkg in args.packages:
 			head = f.readline().strip()
 		name = head.split(':')[1].strip()
 		pkgs.append((pkg, name))
-
-ds = dists.get(args.dist)
-rs = remotes.get(args.remote)
-
-if not ds:
-	raise Exception('No dists matched')
-if not rs:
-	raise Exception('No remotes matched')
 
 print 'Going to build:'
 for pkg in pkgs:
