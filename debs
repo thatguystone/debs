@@ -5,6 +5,7 @@ from __future__ import print_function
 import argparse
 import glob
 import json
+import multiprocessing
 import os.path
 import platform
 import re
@@ -71,6 +72,7 @@ def run_sbuild(arch, dist, pkg, pkg_name):
 			check_run('sbuild', '--source',
 				'--arch', arch,
 				'--dist', dist,
+				'-j', str(multiprocessing.cpu_count()),
 				pkg)
 			return
 		except RunException as e:
