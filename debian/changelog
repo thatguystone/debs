@@ -1,3 +1,10 @@
+debs (1.0.2) all; urgency=medium
+
+  * Add sbuild-{new,del} commands to simplify environment creation
+  * Add version skipping for large builds (without *.changes files)
+
+ -- Andrew Stone <a@stoney.io>  Tue, 28 Jul 2015 17:40:53 -0400
+
 debs (1.0.1) all; urgency=medium
 
   * Make the command a little friendlier

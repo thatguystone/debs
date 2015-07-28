@@ -1,19 +1,33 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import argparse
 import glob
+import json
 import os.path
 import platform
 import re
 import subprocess
 import sys
+import tempfile
+
+CFG_FILE = '.debs'
+VERSIONS_FILE = CFG_FILE + '-versions'
 
 DEFAULT_REMOTE = 'default'
-CURRENT_STABLE = 'wheezy'
+CURRENT_STABLE = 'jessie'
 PYARCH_TO_DEBARCH = {
 	'i386': 'i386',
 	'x86_64': 'amd64'
 }
+
+SBUILD_ARCHS = set(PYARCH_TO_DEBARCH.values())
+SBUILD_REPO_URLS = {
+	'debian': 'http://httpredir.debian.org/debian',
+	'ubuntu': 'http://us.archive.ubuntu.com/ubuntu/',
+}
+
 GEN_GLOBS = [
 	'../*_*.build',
 	'../*_*.changes',
@@ -24,6 +38,8 @@ GEN_GLOBS = [
 	'../*_*.build',
 	'../*_*.upload',
 ]
+
+CHANGELOG_VERSION = re.compile(r'.* \((.*)\) .*; urgency=')
 
 def run(cmd):
 	p = subprocess.Popen(cmd,
@@ -36,21 +52,26 @@ def run(cmd):
 
 	return p.communicate()[0]
 
-def check_run(args):
-	print 'I: running `%s`' % ' '.join(args)
+def check_run(*args, **kwargs):
+	print('I: running `%s`' % ' '.join(args))
 
+	p = None
 	try:
-		p = subprocess.Popen(args)
+		p = subprocess.Popen(args, shell=kwargs.get('shell', False))
 		p.wait()
 		if p.returncode != 0:
 			raise RunException(p.returncode)
 	finally:
-		p.wait()
+		if p:
+			p.wait()
 
 def run_sbuild(arch, dist, pkg, pkg_name):
 	while True:
 		try:
-			check_run(['sbuild', '--source', '--arch', arch, '--dist', dist, pkg])
+			check_run('sbuild', '--source',
+				'--arch', arch,
+				'--dist', dist,
+				pkg)
 			return
 		except RunException as e:
 			res = raw_input(
@@ -80,17 +101,14 @@ class Dists(object):
 		for e in envs:
 			self.dists.add(e)
 
-		if not self.dists:
-			raise Exception('no sbuild environments found')
-
-		if self.default not in self.dists:
-			self.default = self.dists[0]
+		if self.dists and self.default not in self.dists:
+			self.default = list(self.dists)[0]
 
 	def dump(self):
-		print 'Available dists (*default):'
+		print('Available dists (*default):')
 		for d in self.get_all():
 			star = '*' if d == self.default else ' '
-			print '   %s%s' % (star, d)
+			print('   %s%s' % (star, d))
 		sys.exit(0)
 
 	def get_all(self):
@@ -100,7 +118,8 @@ class Dists(object):
 		ds = set()
 
 		if not dists:
-			ds.add(self.default)
+			if self.dists:
+				ds.add(self.default)
 		elif 'all' in dists:
 			ds = self.get_all()
 		else:
@@ -129,10 +148,10 @@ class Remotes(object):
 			raise Exception('Default remote %s not found' % DEFAULT_REMOTE)
 
 	def dump(self):
-		print 'Available remotes (*default):'
+		print('Available remotes (*default):')
 		for h in self.hosts:
 			star = '*' if h[0] == self.default else ' '
-			print '   %s%s (%s)' % (star, h[0], h[1])
+			print('   %s%s (%s)' % (star, h[0], h[1]))
 		sys.exit(0)
 
 	def get(self, rs):
@@ -147,10 +166,64 @@ class Remotes(object):
 
 		return hosts
 
+def sbuild_new(desc):
+	parts = desc.split('-')
+	if len(parts) != 3:
+		print('E: Invalid env spec')
+		sys.exit(1)
+
+	repo = SBUILD_REPO_URLS.get(parts[0], None)
+	if not repo:
+		print('E: Invalid distribution name: %s' % parts[0])
+		sys.exit(1)
+
+	arch = parts[2].lower()
+	if arch not in SBUILD_ARCHS:
+		print('E: Invalid arch name: %s' % parts[2])
+		sys.exit(1)
+
+	name = '%s-%s' % (parts[1], arch)
+
+	check_run('sudo', 'sbuild-createchroot',
+		'--include=eatmydata,lintian',
+		'--arch=%s' % arch,
+		'--make-sbuild-tarball=/var/lib/sbuild/%s.tar' % name,
+		parts[1],
+		tempfile.mkdtemp(),
+		repo)
+
+	check_run('echo "command-prefix=eatmydata" | '
+		'sudo tee -a /etc/schroot/chroot.d/%s-sbuild-* > /dev/null' % name,
+		shell=True)
+
+def sbuild_del(ds):
+	print('Going to delete:')
+	for d in ds:
+		print('    `%s`' % d)
+
+	print()
+	res = raw_input('Confirm? [y/N] ')
+	if res.lower() != 'y':
+		print('Aborting...')
+		sys.exit(1)
+
+	for d in ds:
+		check_run('sudo', 'schroot',
+			'--end-session', '--all-sessions',
+			'chroot:%s-sbuild' % d)
+		check_run('sudo', 'schroot',
+			'--end-session', '--all-sessions',
+			'source:%s-sbuild' % d)
+		check_run('sudo rm /etc/schroot/chroot.d/%s-sbuild-*' % d,
+			shell=True)
+		check_run('sudo', 'rm', '/var/lib/sbuild/%s.tar' % d)
+
 def update(dists):
 	for d in dists:
 		parts = d.split('-')
-		check_run(['sudo', 'sbuild-update', '-udcar', '--arch', parts[1], parts[0]])
+		check_run('sudo', 'sbuild-update',
+			'-udcar',
+			'--arch', parts[1], parts[0])
 	sys.exit(0)
 
 def find_changes_file(outdir, pkg):
@@ -176,12 +249,38 @@ def rm_gen_files(outdir, pkg, changes):
 	for f in fs:
 		os.unlink(f)
 
+def get_dsc_version(dsc):
+	with open(dsc) as f:
+		for l in f:
+			parts = l.split(':')
+			if parts[0].strip() == 'Version':
+				return parts[1].strip()
+
+	raise Exception('Could not find pkg version in %s', dsc)
+
+def get_changelog_version(pkg):
+	log = '%s/debian/changelog' % pkg
+	with open(log) as f:
+		m = CHANGELOG_VERSION.match(f.read())
+
+	if not m:
+		raise Exception('Could not find pkg version in %s', log)
+
+	return m.group(1)
+
+def skip_key(pkg, dist):
+	return '%s[%s]' % (pkg[1], dist)
+
+def skip_version(pkg, dist):
+	return versions.get(skip_key(pkg, dist), None) == pkg[2]
+
 dists = Dists()
 remotes = Remotes()
 
 parser = argparse.ArgumentParser(description='Build a Debian package and dput it')
 parser.add_argument(
-	'packages', metavar='PACKAGE[.dsc]', type=str, nargs='*',
+	'packages', metavar='PACKAGE[.dsc]',
+	type=str, nargs='*',
 	help='which package(s) to build')
 parser.add_argument(
 	'-c', '--clean',
@@ -195,31 +294,62 @@ parser.add_argument(
 		'use "all" to build in all. '+
 		'otherwise, does prefix/suffix matching on the given values')
 parser.add_argument(
+	'--ignore-versions',
+	action='store_true',
+	help='ignore already-built version information and build everything')
+parser.add_argument(
 	'--list-dists',
 	action='store_true',
 	help='list all dists known to sbuild')
+parser.add_argument(
+	'--list-remotes',
+	action='store_true',
+	help='list all remotes known to dput')
+parser.add_argument(
+	'--no-versions',
+	action='store_true',
+	help='if no versions file should be written')
 parser.add_argument(
 	'-r', '--remote',
 	type=str,
 	action='append',
 	help='which remote to use (may be given multiple times)')
 parser.add_argument(
-	'--list-remotes',
+	'--sbuild-del',
 	action='store_true',
-	help='list all remotes known to dput')
+	help='delete the sbuild envs associated with the selected dists (-d/--dist)')
 parser.add_argument(
-	'-u', '--update',
+	'--sbuild-new',
+	metavar='<debian-testing-amd64>',
+	help='create a new sbuild env, use the format ubuntu-codename-arch or debian-codename-arch')
+parser.add_argument(
+	'--sbuild-update',
 	action='store_true',
 	help='perform apt-get upgrades in the matched dists')
 
 args = parser.parse_args()
 
+if args.sbuild_new:
+	sbuild_new(args.sbuild_new)
+	sys.exit(0)
+
 if args.clean:
 	clean()
 
-if os.path.exists('.debs'):
-	with open('.debs') as f:
+if os.path.exists(CFG_FILE):
+	pkgs = args.packages
+	with open(CFG_FILE) as f:
 		parser.parse_args(f.read().split(), namespace=args)
+
+	for p in args.packages:
+		pkgs += glob.glob(p)
+
+	args.packages = pkgs
+
+versions = {}
+if not args.ignore_versions and os.path.exists(VERSIONS_FILE):
+	with open(VERSIONS_FILE) as f:
+		versions = json.load(f)
 
 if args.list_dists:
 	dists.dump()
@@ -234,7 +364,11 @@ if not ds:
 if not rs:
 	raise Exception('No remotes matched')
 
-if args.update:
+if args.sbuild_del:
+	sbuild_del(ds)
+	sys.exit(0)
+
+if args.sbuild_update:
 	update(ds)
 
 pkgs = []
@@ -247,7 +381,7 @@ for pkg in args.packages:
 		raise Exception('Package %s not found' % pkg)
 
 	if pkg.endswith('.dsc'):
-		pkgs.append((pkg, pkg.split('_')[0]))
+		pkgs.append((pkg, pkg.split('_')[0], get_dsc_version(pkg)))
 	else:
 		ctrl = '%s/debian/control' % pkg
 		if not os.path.isfile(ctrl):
@@ -255,26 +389,36 @@ for pkg in args.packages:
 		with open(ctrl) as f:
 			head = f.readline().strip()
 		name = head.split(':')[1].strip()
-		pkgs.append((pkg, name))
+		pkgs.append((pkg, name, get_changelog_version(pkg)))
 
-print 'Going to build:'
+print('Going to build:')
 for pkg in pkgs:
-	print '    `%s` for' % pkg[1]
+	print('    `%s` (v%s) for' % (pkg[1], pkg[2]))
 	for d in ds:
-		print '        %s' % d
+		skip = ''
+		if skip_version(pkg, d):
+			skip = ' (skip - already built)'
+		print('        %s%s' % (d, skip))
 
-print
+print()
 res = raw_input('Confirm? [y/N] ')
-if res != 'y':
-	print 'Aborting...'
+if res.lower() != 'y':
+	print('Aborting...')
 	sys.exit(1)
 
 for pkg in pkgs:
 	outdir = os.path.abspath('%s/..' % pkg[0])
 	for d in ds:
+		if skip_version(pkg, d):
+			continue
 		parts = d.split('-')
 		run_sbuild(parts[1], parts[0], pkg[0], pkg[1])
 		changes = find_changes_file(outdir, pkg[1])
 		for r in rs:
-			check_run(['dput', r, changes])
+			check_run('dput', r, changes)
 		rm_gen_files(outdir, pkg[1], changes)
+		versions[skip_key(pkg, d)] = pkg[2]
+
+if not args.ignore_versions and not args.no_versions:
+	with open(VERSIONS_FILE, 'w') as f:
+		json.dump(versions, f)

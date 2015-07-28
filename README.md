@@ -17,10 +17,10 @@ pkg2
 
 ## Installing debs
 
-1. Add `deb http://deb.clovar.com/ testing/` to your `sources.list`.
+1. Add `deb http://deb.stoney.io/ testing/` to your `sources.list`.
 1. Add the repo key using one of the following:
+	* `sudo apt-get install debian-stoney.io-keyring`
 	* `sudo apt-key adv --keyserver pgp.mit.edu --recv-keys BEFBAE7F`
-	* `curl 'http://deb.clovar.com/key.asc' | sudo apt-key add -`
 1. `sudo aptitude install debs`
 
 ## Todo
