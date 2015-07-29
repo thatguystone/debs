@@ -1,3 +1,9 @@
+debs (1.0.3) UNRELEASED; urgency=medium
+
+  * Support "3.0 (quilt)" packages
+
+ -- Andrew Stone <a@stoney.io>  Tue, 28 Jul 2015 21:17:50 -0400
+
 debs (1.0.2) all; urgency=medium
 
   * Add sbuild-{new,del} commands to simplify environment creation
