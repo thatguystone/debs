@@ -109,8 +109,12 @@ class Package(object):
 		if self.quilted:
 			# The actual source is sometimes modified by patches. Just remove
 			# them to keep things clean.
-			subprocess.Popen(['quilt', 'pop', '-a'],
-				cwd=pkg.path).wait()
+			try:
+				subprocess.Popen(['quilt', 'pop', '-a'],
+					cwd=pkg.path).wait()
+			except OSError as e:
+				raise Exception('`quilt` is not installed')
+
 			shutil.rmtree('%s/.pc/' % pkg.path, ignore_errors=True)
 
 class RunException(Exception):
@@ -386,12 +390,6 @@ if not ds:
 	raise Exception('No dists matched')
 if not rs:
 	raise Exception('No remotes matched')
-
-try:
-	p = subprocess.Popen(['quilt', '--version'], stdout=subprocess.PIPE)
-	p.communicate()
-except OSError as e:
-	raise Exception('`quilt` is not installed')
 
 if args.sbuild_del:
 	sbuild_del(ds)
