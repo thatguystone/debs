@@ -9,6 +9,7 @@ import multiprocessing
 import os.path
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -30,14 +31,16 @@ SBUILD_REPO_URLS = {
 }
 
 GEN_GLOBS = [
-	'../*_*.build',
-	'../*_*.changes',
-	'../*_*.deb',
-	'../*_*.dsc',
-	'../*_*.tar.gz',
-	'../*_*.tar.xz',
-	'../*_*.build',
-	'../*_*.upload',
+	'*_*.*.build',
+	'*_*.*.changes',
+	'*_*.*.deb',
+	'*_*.*.dsc',
+	'*_*.*.debian.tar.gz',
+	'*_*.*.orig.tar.gz',
+	'*_*.*.debian.tar.xz',
+	'*_*.*.orig.tar.xz',
+	'*_*.*.build',
+	'*_*.*.upload',
 ]
 
 CHANGELOG_VERSION = re.compile(r'.* \((.*)\) .*; urgency=')
@@ -66,22 +69,49 @@ def check_run(*args, **kwargs):
 		if p:
 			p.wait()
 
-def run_sbuild(arch, dist, pkg, pkg_name):
+def run_sbuild(arch, dist, pkg):
 	while True:
 		try:
 			check_run('sbuild', '--source',
 				'--arch', arch,
 				'--dist', dist,
 				'-j', str(multiprocessing.cpu_count()),
-				pkg)
+				pkg.path)
 			return
 		except RunException as e:
 			res = raw_input(
 				'E: `%s` on %s-%s failed with exit code %d. '
 				'Try again? [y/N] '
-					% (pkg_name, dist, arch, e.code))
+					% (pkg.name, dist, arch, e.code))
 			if res != 'y':
 				raise
+
+			pkg.rebuild_tar()
+
+class Package(object):
+	def __init__(self, path, name, version, quilted):
+		self.path = path
+		self.name = name
+		self.version = version
+		self.quilted = quilted
+
+	def tar_path(self):
+		v = self.version.split('-')[0]
+		tar =  '%s_%s.orig.tar.xz' % (self.name, v)
+		return os.path.normpath('%s/../%s' % (pkg.path, tar))
+
+	def rebuild_tar(self):
+		if self.quilted:
+			self.quilt_clean()
+			check_run('tar', 'cfJ', self.tar_path(), pkg.path)
+
+	def quilt_clean(self):
+		if self.quilted:
+			# The actual source is sometimes modified by patches. Just remove
+			# them to keep things clean.
+			subprocess.Popen(['quilt', 'pop', '-a'],
+				cwd=pkg.path).wait()
+			shutil.rmtree('%s/.pc/' % pkg.path, ignore_errors=True)
 
 class RunException(Exception):
 	def __init__(self, code):
@@ -245,20 +275,11 @@ def rm_gen_files(outdir, pkg, changes):
 		ch = f.read()
 
 	fs = list([changes] +
-		['%s/%s' % (outdir, f) for f in re.findall(r'\w{32} \d* \w* \w* (.*)', ch)] +
+		['%s/%s' % (outdir, f) for f in re.findall(r'\w{32} \d* .* .* (.*)', ch)] +
 		glob.glob('%s/%s*.build' % (outdir, pkg)) +
 		glob.glob('%s/%s*.upload' % (outdir, pkg)))
 	for f in fs:
 		os.unlink(f)
-
-def get_dsc_version(dsc):
-	with open(dsc) as f:
-		for l in f:
-			parts = l.split(':')
-			if parts[0].strip() == 'Version':
-				return parts[1].strip()
-
-	raise Exception('Could not find pkg version in %s', dsc)
 
 def get_changelog_version(pkg):
 	log = '%s/debian/changelog' % pkg
@@ -271,17 +292,17 @@ def get_changelog_version(pkg):
 	return m.group(1)
 
 def skip_key(pkg, dist):
-	return '%s[%s]' % (pkg[1], dist)
+	return '%s[%s]' % (pkg.name, dist)
 
 def skip_version(pkg, dist):
-	return versions.get(skip_key(pkg, dist), None) == pkg[2]
+	return versions.get(skip_key(pkg, dist), None) == pkg.version
 
 dists = Dists()
 remotes = Remotes()
 
 parser = argparse.ArgumentParser(description='Build a Debian package and dput it')
 parser.add_argument(
-	'packages', metavar='PACKAGE[.dsc]',
+	'packages', metavar='PACKAGE_PATH',
 	type=str, nargs='*',
 	help='which package(s) to build')
 parser.add_argument(
@@ -366,6 +387,12 @@ if not ds:
 if not rs:
 	raise Exception('No remotes matched')
 
+try:
+	p = subprocess.Popen(['quilt', '--version'], stdout=subprocess.PIPE)
+	p.communicate()
+except OSError as e:
+	raise Exception('`quilt` is not installed')
+
 if args.sbuild_del:
 	sbuild_del(ds)
 	sys.exit(0)
@@ -382,20 +409,26 @@ for pkg in args.packages:
 	if not os.path.exists(pkg):
 		raise Exception('Package %s not found' % pkg)
 
-	if pkg.endswith('.dsc'):
-		pkgs.append((pkg, pkg.split('_')[0], get_dsc_version(pkg)))
-	else:
-		ctrl = '%s/debian/control' % pkg
-		if not os.path.isfile(ctrl):
-			raise Exception('%s not found' % ctrl)
-		with open(ctrl) as f:
-			head = f.readline().strip()
-		name = head.split(':')[1].strip()
-		pkgs.append((pkg, name, get_changelog_version(pkg)))
+	ctrl = '%s/debian/control' % pkg
+	if not os.path.isfile(ctrl):
+		raise Exception('%s not found' % ctrl)
+	with open(ctrl) as f:
+		head = f.readline().strip()
+	name = head.split(':')[1].strip()
+
+	format = '%s/debian/source/format' % pkg
+	with open(format) as f:
+		quilted = '(quilt)' in f.read()
+
+	pkgs.append(Package(
+		path=pkg,
+		name=name,
+		version=get_changelog_version(pkg),
+		quilted=quilted))
 
 print('Going to build:')
 for pkg in pkgs:
-	print('    `%s` (v%s) for' % (pkg[1], pkg[2]))
+	print('    `%s` (v%s) for' % (pkg.name, pkg.version))
 	for d in ds:
 		skip = ''
 		if skip_version(pkg, d):
@@ -408,18 +441,27 @@ if res.lower() != 'y':
 	print('Aborting...')
 	sys.exit(1)
 
+orig_tars = set()
 for pkg in pkgs:
-	outdir = os.path.abspath('%s/..' % pkg[0])
+	outdir = os.path.abspath('%s/..' % pkg.path)
 	for d in ds:
 		if skip_version(pkg, d):
 			continue
+
+		pkg.rebuild_tar()
+
 		parts = d.split('-')
-		run_sbuild(parts[1], parts[0], pkg[0], pkg[1])
-		changes = find_changes_file(outdir, pkg[1])
+		run_sbuild(parts[1], parts[0], pkg)
+
+		pkg.quilt_clean()
+
+		changes = find_changes_file(outdir, pkg.name)
 		for r in rs:
 			check_run('dput', r, changes)
-		rm_gen_files(outdir, pkg[1], changes)
-		versions[skip_key(pkg, d)] = pkg[2]
+
+		rm_gen_files(outdir, pkg.name, changes)
+
+		versions[skip_key(pkg, d)] = pkg.version
 
 if not args.ignore_versions and not args.no_versions:
 	with open(VERSIONS_FILE, 'w') as f:
