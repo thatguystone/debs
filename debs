@@ -29,6 +29,10 @@ SBUILD_REPO_URLS = {
 	'debian': 'http://httpredir.debian.org/debian',
 	'ubuntu': 'http://us.archive.ubuntu.com/ubuntu/',
 }
+SBUILD_COMPONENTS = {
+	'debian': 'main,contrib,non-free',
+	'ubuntu': 'main,restricted,universe,multiverse',
+}
 
 GEN_GLOBS = [
 	'*_*.*.build',
@@ -208,9 +212,11 @@ def sbuild_new(desc):
 		print('E: Invalid env spec')
 		sys.exit(1)
 
-	repo = SBUILD_REPO_URLS.get(parts[0], None)
+	dist = parts[0]
+
+	repo = SBUILD_REPO_URLS.get(dist, None)
 	if not repo:
-		print('E: Invalid distribution name: %s' % parts[0])
+		print('E: Invalid distribution name: %s' % dist)
 		sys.exit(1)
 
 	arch = parts[2].lower()
@@ -223,6 +229,7 @@ def sbuild_new(desc):
 	check_run('sudo', 'sbuild-createchroot',
 		'--include=eatmydata,lintian',
 		'--arch=%s' % arch,
+		'--components=%s' % SBUILD_COMPONENTS[dist],
 		'--make-sbuild-tarball=/var/lib/sbuild/%s.tar' % name,
 		parts[1],
 		tempfile.mkdtemp(),

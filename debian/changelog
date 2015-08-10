@@ -1,4 +1,10 @@
-debs (1.0.3) UNRELEASED; urgency=medium
+debs (1.0.4) all; urgency=medium
+
+  * Include all components when creating schroot
+
+ -- Andrew Stone <a@stoney.io>  Mon, 10 Aug 2015 17:08:29 -0400
+
+debs (1.0.3) all; urgency=medium
 
   * Support "3.0 (quilt)" packages
 
