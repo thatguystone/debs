@@ -18,9 +18,7 @@ pkg2
 ## Installing debs
 
 1. Add `deb http://deb.stoney.io/ testing/` to your `sources.list`.
-1. Add the repo key using one of the following:
-	* `sudo apt-get install debian-stoney.io-keyring`
-	* `sudo apt-key adv --keyserver pgp.mit.edu --recv-keys BEFBAE7F`
+1. Install the archive keys: `sudo apt-get install stoney.io-archive-keyring`
 1. `sudo aptitude install debs`
 
 ## Todo
