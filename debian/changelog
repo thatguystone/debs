@@ -1,6 +1,7 @@
 debs (1.0.5) stable; urgency=medium
 
   * Add bash-completion script
+  * Don't let default arguments override those given on command line
 
  -- Andrew Stone <a@stoney.io>  Tue, 10 Nov 2015 12:56:18 -0500
 

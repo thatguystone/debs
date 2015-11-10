@@ -371,12 +371,21 @@ if args.clean:
 	clean()
 
 if os.path.exists(CFG_FILE):
+	dist = args.dist
+	remote = args.remote
 	pkgs = args.packages
+
 	with open(CFG_FILE) as f:
 		parser.parse_args(f.read().split(), namespace=args)
 
-	for p in args.packages:
-		pkgs += glob.glob(p)
+	# Don't allow default arguments to override those given on command line
+	if dist:
+		args.dist = dist
+	if remote:
+		args.remote = remote
+	if not pkgs:
+		for p in args.packages:
+			pkgs += glob.glob(p)
 
 	args.packages = pkgs
 
