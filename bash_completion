@@ -1,0 +1,33 @@
+_debs_list()
+{
+	debs --list-$1 | sed 1d | sed 's/\*//g'
+}
+
+_debs()
+{
+	local cur prev opts
+	COMPREPLY=()
+
+	cur=${COMP_WORDS[COMP_CWORD]}
+	prev=${COMP_WORDS[COMP_CWORD-1]}
+	opts='-h --help -c --clean -d --dist --ignore-version \
+		--list-dists --list-remotes --no-versions -r --remote \
+		--sbuild-del --sbuild-new --sbuild-update'
+
+	case $prev in
+	--dist|-d)
+		dists=$(_debs_list dists)
+		COMPREPLY=( $( compgen -W "$dists" -- "$cur" ) )
+		;;
+	--remote|-r)
+		dists=$(_debs_list remotes | awk '{ print $1 }')
+		COMPREPLY=( $( compgen -W "$dists" -- "$cur" ) )
+		;;
+	*)
+		COMPREPLY=( $( compgen -W "$opts" -- "$cur" ) )
+		;;
+	esac
+
+	return 0
+}
+complete -F _debs debs

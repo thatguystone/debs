@@ -1,29 +1,35 @@
-debs (1.0.4) all; urgency=medium
+debs (1.0.5) stable; urgency=medium
+
+  * Add bash-completion script
+
+ -- Andrew Stone <a@stoney.io>  Tue, 10 Nov 2015 12:56:18 -0500
+
+debs (1.0.4) stable; urgency=medium
 
   * Include all components when creating schroot
 
  -- Andrew Stone <a@stoney.io>  Mon, 10 Aug 2015 17:08:29 -0400
 
-debs (1.0.3) all; urgency=medium
+debs (1.0.3) stable; urgency=medium
 
   * Support "3.0 (quilt)" packages
 
  -- Andrew Stone <a@stoney.io>  Tue, 28 Jul 2015 21:17:50 -0400
 
-debs (1.0.2) all; urgency=medium
+debs (1.0.2) stable; urgency=medium
 
   * Add sbuild-{new,del} commands to simplify environment creation
   * Add version skipping for large builds (without *.changes files)
 
  -- Andrew Stone <a@stoney.io>  Tue, 28 Jul 2015 17:40:53 -0400
 
-debs (1.0.1) all; urgency=medium
+debs (1.0.1) stable; urgency=medium
 
   * Make the command a little friendlier
 
  -- Andrew Stone <andrew@clovar.com>  Wed, 21 Jan 2015 18:47:07 -0500
 
-debs (1.0.0) all; urgency=medium
+debs (1.0.0) stable; urgency=medium
 
   * Initial release.
 

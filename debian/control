@@ -6,13 +6,20 @@ Standards-Version: 3.9.6
 X-Python-Version: >= 2.6
 Build-Depends:
 	debhelper (>= 9),
-	python
+	dh-exec,
+	dh-python,
+	python-all,
+	python3,
+	dh-python | python-support,
 
 Package: debs
 Architecture: any
 Depends:
 	${misc:Depends},
-	${python:Depends}
+	${python3:Depends},
+Recommends:
+	bash-completion
 Description: For building your .debs
-	Automates building .deb files locally in a bunch of different environments
-	and pushing them to a remote repo with dput.
+	Automates building .deb files locally for a bunch of different
+	environments and pushing them to a remote repo with dput. Also has support
+	for managing sbuild environments.
