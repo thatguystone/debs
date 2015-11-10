@@ -24,7 +24,7 @@ _debs()
 		COMPREPLY=( $( compgen -W "$dists" -- "$cur" ) )
 		;;
 	*)
-		COMPREPLY=( $( compgen -W "$opts" -- "$cur" ) )
+		COMPREPLY=( $( compgen -W "$opts" -d -- "$cur" ) )
 		;;
 	esac
 
