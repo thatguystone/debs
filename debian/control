@@ -17,6 +17,11 @@ Architecture: any
 Depends:
 	${misc:Depends},
 	${python3:Depends},
+	dput,
+	quilt,
+	sbuild,
+	schroot,
+	sudo,
 Recommends:
 	bash-completion
 Description: For building your .debs
