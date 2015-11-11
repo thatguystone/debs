@@ -6,6 +6,7 @@ import argparse
 import glob
 import json
 import multiprocessing
+import os
 import os.path
 import platform
 import re
@@ -120,6 +121,12 @@ class Package(object):
 				raise Exception('`quilt` is not installed')
 
 			shutil.rmtree('%s/.pc/' % pkg.path, ignore_errors=True)
+
+	def realpath(self):
+		try:
+			return os.readlink(self.path)
+		except OSError:
+			return None
 
 class RunException(Exception):
 	def __init__(self, code):
@@ -281,16 +288,24 @@ def clean():
 			os.unlink(f)
 	sys.exit(0)
 
-def rm_gen_files(outdir, pkg, changes):
-	with open(changes) as f:
+def list_gen_files(changes_file):
+	with open(changes_file) as f:
 		ch = f.read()
 
-	fs = list([changes] +
-		['%s/%s' % (outdir, f) for f in re.findall(r'\w{32} \d* .* .* (.*)', ch)] +
-		glob.glob('%s/%s*.build' % (outdir, pkg)) +
-		glob.glob('%s/%s*.upload' % (outdir, pkg)))
+	os.unlink(changes_file)
+
+	return ['%s' % f for f in re.findall(r'\w{32} \d* .* .* (.*)', ch)]
+
+def rm_gen_files(outdir, pkg_name, files):
+	fs = list(['%s/%s' % (outdir, c) for c in files] +
+		glob.glob('%s/%s*.build' % (outdir, pkg_name)) +
+		glob.glob('%s/%s*.upload' % (outdir, pkg_name)))
+
 	for f in fs:
-		os.unlink(f)
+		try:
+			os.unlink(f)
+		except OSError:
+			pass
 
 def get_changelog_version(pkg):
 	log = '%s/debian/changelog' % pkg
@@ -458,6 +473,13 @@ if res.lower() != 'y':
 orig_tars = set()
 for pkg in pkgs:
 	outdir = os.path.abspath('%s/..' % pkg.path)
+
+	# With symlinked dirs, sbuild puts some files in the dir's true parent, so
+	# need to follow the symlink and clean up those files, too.
+	realpath = pkg.realpath()
+	if realpath:
+		realoutdir = os.path.abspath('%s/..' % realpath)
+
 	for d in ds:
 		if skip_version(pkg, d):
 			continue
@@ -469,11 +491,14 @@ for pkg in pkgs:
 
 		pkg.quilt_clean()
 
-		changes = find_changes_file(outdir, pkg.name)
+		changes_file = find_changes_file(outdir, pkg.name)
 		for r in rs:
-			check_run('dput', r, changes)
+			check_run('dput', r, changes_file)
 
-		rm_gen_files(outdir, pkg.name, changes)
+		files = list_gen_files(changes_file)
+		rm_gen_files(outdir, pkg.name, files)
+		if realoutdir:
+			rm_gen_files(realoutdir, pkg.name, files)
 
 		versions[skip_key(pkg, d)] = pkg.version
 

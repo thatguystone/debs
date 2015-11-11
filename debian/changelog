@@ -1,3 +1,10 @@
+debs (1.0.6) stable; urgency=medium
+
+  * When package is a symlinked dir, chase down and delete files from
+    symlink's true parent
+
+ -- Andrew Stone <a@stoney.io>  Wed, 11 Nov 2015 12:01:51 -0500
+
 debs (1.0.5) stable; urgency=medium
 
   * Add bash-completion script
