@@ -1,3 +1,10 @@
+debs (1.0.7) stable; urgency=medium
+
+  * Simplify file cleanup by running build in temp dir
+  * Use sbuild post-build cmd to clean up other files
+
+ -- Andrew Stone <a@stoney.io>  Wed, 18 Nov 2015 16:06:26 -0500
+
 debs (1.0.6) stable; urgency=medium
 
   * When package is a symlinked dir, chase down and delete files from

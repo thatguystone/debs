@@ -35,19 +35,6 @@ SBUILD_COMPONENTS = {
 	'ubuntu': 'main,restricted,universe,multiverse',
 }
 
-GEN_GLOBS = [
-	'*_*.*.build',
-	'*_*.*.changes',
-	'*_*.*.deb',
-	'*_*.*.dsc',
-	'*_*.*.debian.tar.gz',
-	'*_*.*.orig.tar.gz',
-	'*_*.*.debian.tar.xz',
-	'*_*.*.orig.tar.xz',
-	'*_*.*.build',
-	'*_*.*.upload',
-]
-
 CHANGELOG_VERSION = re.compile(r'.* \((.*)\) .*; urgency=')
 
 def run(cmd):
@@ -66,7 +53,7 @@ def check_run(*args, **kwargs):
 
 	p = None
 	try:
-		p = subprocess.Popen(args, shell=kwargs.get('shell', False))
+		p = subprocess.Popen(args, **kwargs)
 		p.wait()
 		if p.returncode != 0:
 			raise RunException(p.returncode)
@@ -74,14 +61,18 @@ def check_run(*args, **kwargs):
 		if p:
 			p.wait()
 
-def run_sbuild(arch, dist, pkg):
+def run_sbuild(arch, dist, pkg, tmpdir):
 	while True:
 		try:
-			check_run('sbuild', '--source',
+			check_run('sbuild',
+				'--source',
 				'--arch', arch,
 				'--dist', dist,
 				'-j', str(multiprocessing.cpu_count()),
-				pkg.path)
+				'--post-build-commands',
+					"""%s --sbuild-hook-clean=%%SBUILD_DSC""" % os.path.abspath(__file__),
+				os.path.abspath(pkg.path),
+				cwd=tmpdir)
 			return
 		except RunException as e:
 			res = raw_input(
@@ -268,7 +259,7 @@ def sbuild_del(ds):
 			shell=True)
 		check_run('sudo', 'rm', '/var/lib/sbuild/%s.tar' % d)
 
-def update(dists):
+def sbuild_update(dists):
 	for d in dists:
 		parts = d.split('-')
 		check_run('sudo', 'sbuild-update',
@@ -276,36 +267,25 @@ def update(dists):
 			'--arch', parts[1], parts[0])
 	sys.exit(0)
 
+def sbuild_hook_clean(dsc):
+	filename, file_extension = os.path.splitext(dsc)
+
+	def unlink(p):
+		try:
+			os.unlink(p)
+		except:
+			pass
+
+	unlink(dsc)
+	unlink(filename + '.tar.gz')
+	unlink(filename + '.tar.bz')
+	unlink(filename + '.tar.xz')
+
 def find_changes_file(outdir, pkg):
 	files = glob.glob('%s/%s*.changes' % (outdir, pkg))
 	if not files:
 		raise Exception('Changes file for %s not found' % pkg)
 	return files[0]
-
-def clean():
-	for g in GEN_GLOBS:
-		for f in glob.glob(g):
-			os.unlink(f)
-	sys.exit(0)
-
-def list_gen_files(changes_file):
-	with open(changes_file) as f:
-		ch = f.read()
-
-	os.unlink(changes_file)
-
-	return ['%s' % f for f in re.findall(r'\w{32} \d* .* .* (.*)', ch)]
-
-def rm_gen_files(outdir, pkg_name, files):
-	fs = list(['%s/%s' % (outdir, c) for c in files] +
-		glob.glob('%s/%s*.build' % (outdir, pkg_name)) +
-		glob.glob('%s/%s*.upload' % (outdir, pkg_name)))
-
-	for f in fs:
-		try:
-			os.unlink(f)
-		except OSError:
-			pass
 
 def get_changelog_version(pkg):
 	log = '%s/debian/changelog' % pkg
@@ -331,10 +311,6 @@ parser.add_argument(
 	'packages', metavar='PACKAGE_PATH',
 	type=str, nargs='*',
 	help='which package(s) to build')
-parser.add_argument(
-	'-c', '--clean',
-	action='store_true',
-	help='clean up all debian-generated files in this directory')
 parser.add_argument(
 	'-d', '--dist',
 	type=str,
@@ -375,15 +351,20 @@ parser.add_argument(
 	'--sbuild-update',
 	action='store_true',
 	help='perform apt-get upgrades in the matched dists')
+parser.add_argument(
+	'--sbuild-hook-clean',
+	metavar='<path/to.dsc>',
+	help='post-build hook for sbuild')
 
 args = parser.parse_args()
+
+if args.sbuild_hook_clean:
+	sbuild_hook_clean(args.sbuild_hook_clean)
+	sys.exit(0)
 
 if args.sbuild_new:
 	sbuild_new(args.sbuild_new)
 	sys.exit(0)
-
-if args.clean:
-	clean()
 
 if os.path.exists(CFG_FILE):
 	dist = args.dist
@@ -427,7 +408,7 @@ if args.sbuild_del:
 	sys.exit(0)
 
 if args.sbuild_update:
-	update(ds)
+	sbuild_update(ds)
 
 pkgs = []
 
@@ -472,35 +453,26 @@ if res.lower() != 'y':
 
 orig_tars = set()
 for pkg in pkgs:
-	outdir = os.path.abspath('%s/..' % pkg.path)
-
-	# With symlinked dirs, sbuild puts some files in the dir's true parent, so
-	# need to follow the symlink and clean up those files, too.
-	realpath = pkg.realpath()
-	if realpath:
-		realoutdir = os.path.abspath('%s/..' % realpath)
-
 	for d in ds:
 		if skip_version(pkg, d):
 			continue
 
-		pkg.rebuild_tar()
+		tmpdir = tempfile.mkdtemp(prefix='debs-')
+		try:
+			pkg.rebuild_tar()
 
-		parts = d.split('-')
-		run_sbuild(parts[1], parts[0], pkg)
+			parts = d.split('-')
+			run_sbuild(parts[1], parts[0], pkg, tmpdir)
 
-		pkg.quilt_clean()
+			pkg.quilt_clean()
 
-		changes_file = find_changes_file(outdir, pkg.name)
-		for r in rs:
-			check_run('dput', r, changes_file)
+			changes_file = find_changes_file(tmpdir, pkg.name)
+			for r in rs:
+				check_run('dput', r, changes_file)
 
-		files = list_gen_files(changes_file)
-		rm_gen_files(outdir, pkg.name, files)
-		if realoutdir:
-			rm_gen_files(realoutdir, pkg.name, files)
-
-		versions[skip_key(pkg, d)] = pkg.version
+			versions[skip_key(pkg, d)] = pkg.version
+		finally:
+			shutil.rmtree(tmpdir)
 
 if not args.ignore_versions and not args.no_versions:
 	with open(VERSIONS_FILE, 'w') as f:
