@@ -1,3 +1,9 @@
+debs (1.0.8) stable; urgency=medium
+
+  * Add --sbuild-repo-url arg for custom apt repos/caches
+
+ -- Andrew Stone <a@stoney.io>  Thu, 19 Nov 2015 15:03:13 -0500
+
 debs (1.0.7) stable; urgency=medium
 
   * Simplify file cleanup by running build in temp dir

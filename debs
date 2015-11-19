@@ -204,7 +204,7 @@ class Remotes(object):
 
 		return hosts
 
-def sbuild_new(desc):
+def sbuild_new(desc, repo):
 	parts = desc.split('-')
 	if len(parts) != 3:
 		print('E: Invalid env spec')
@@ -212,10 +212,11 @@ def sbuild_new(desc):
 
 	dist = parts[0]
 
-	repo = SBUILD_REPO_URLS.get(dist, None)
 	if not repo:
-		print('E: Invalid distribution name: %s' % dist)
-		sys.exit(1)
+		repo = SBUILD_REPO_URLS.get(dist, None)
+		if not repo:
+			print('E: Invalid distribution name, can\'t find repo for: %s' % dist)
+			sys.exit(1)
 
 	arch = parts[2].lower()
 	if arch not in SBUILD_ARCHS:
@@ -348,6 +349,10 @@ parser.add_argument(
 	metavar='<debian-testing-amd64>',
 	help='create a new sbuild env, use the format ubuntu-codename-arch or debian-codename-arch')
 parser.add_argument(
+	'--sbuild-repo-url',
+	metavar=SBUILD_REPO_URLS['debian'],
+	help='alternative repo URL to use')
+parser.add_argument(
 	'--sbuild-update',
 	action='store_true',
 	help='perform apt-get upgrades in the matched dists')
@@ -363,7 +368,7 @@ if args.sbuild_hook_clean:
 	sys.exit(0)
 
 if args.sbuild_new:
-	sbuild_new(args.sbuild_new)
+	sbuild_new(args.sbuild_new, args.sbuild_repo_url)
 	sys.exit(0)
 
 if os.path.exists(CFG_FILE):
