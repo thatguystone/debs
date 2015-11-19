@@ -8,10 +8,22 @@
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 
-if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] ; then
-    echo "Usage: sign-remote KEY HOSTNAME REPO_BASE"
+HOST=$1
+shift
+
+BASE=$1
+shift
+
+if [ -z "$HOST" ] || [ -z "$BASE" ] || [ $# -eq 0 ]; then
+    echo "Usage: sign-remote HOSTNAME REPO_BASE KEY..."
     exit 2
 fi
+
+KEYS=""
+
+for k in $@; do
+	KEYS="$KEYS -u $k"
+done
 
 tmp=`mktemp -d`
 trap "rm -rf $tmp" EXIT
@@ -20,14 +32,14 @@ signed=""
 cd $tmp
 
 echo "I: retrieving files to sign from remote host ..."
-ssh -C "$2" "tar -cf - \`find $3 -name Release\`" | tar -xf -
+ssh -C "$HOST" "tar -cf - \`find \"$BASE\" -name Release\`" | tar -xf -
 
 echo "I: signing retrieved files ..."
 for f in `find . -type f`; do
-	gpg -u "$1" --detach-sign --batch -o ./$f.gpg ./$f
+	gpg $KEYS --detach-sign --batch -o ./$f.gpg ./$f
 	signed="$signed ./$f.gpg"
 done
 
 echo "I: sending back signed files ..."
-tar -cf - $signed | ssh -C "$2" "tar -xf - -C /"
+tar -cf - $signed | ssh -C "$HOST" "tar -xf - -C /"
 echo "I: signing done"

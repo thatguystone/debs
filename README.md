@@ -24,4 +24,3 @@ pkg2
 ## Todo
 
 1. Include an example of my repo config with mini-dinstall, .dput.cf, .sbuildrc
-1. Include release signing script
