@@ -1,3 +1,9 @@
+debs (1.0.10) stable; urgency=medium
+
+  * sign-remote: Fix for tar "removing leading /" messages
+
+ -- Andrew Stone <a@stoney.io>  Thu, 19 Nov 2015 18:32:25 -0500
+
 debs (1.0.9) stable; urgency=medium
 
   * sign-remote: Allow multiple keys
