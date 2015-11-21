@@ -311,9 +311,6 @@ def get_changelog_version(pkg_path):
 def skip_key(pkg, dist):
 	return '%s[%s]' % (pkg.name, dist)
 
-def skip_version(pkg, dist):
-	return versions.get(skip_key(pkg, dist), None) == pkg.version
-
 dists = Dists()
 remotes = Remotes()
 
@@ -383,139 +380,145 @@ sb_parser.add_argument(
 	default=multiprocessing.cpu_count(),
 	help='jobs flag to pass to sbuild')
 
-args = parser.parse_args()
+def main():
+	def skip_version(pkg, dist):
+		return versions.get(skip_key(pkg, dist), None) == pkg.version
 
-if args.sbuild_hook_clean:
-	sbuild_hook_clean(args.sbuild_hook_clean)
-	sys.exit(0)
+	args = parser.parse_args()
 
-if args.sbuild_new:
-	sbuild_new(args.sbuild_new, args.sbuild_repo_url)
-	sys.exit(0)
+	if args.sbuild_hook_clean:
+		sbuild_hook_clean(args.sbuild_hook_clean)
+		sys.exit(0)
 
-if os.path.exists(CFG_FILE):
-	dist = args.dist
-	remote = args.remote
-	pkgs = args.packages
+	if args.sbuild_new:
+		sbuild_new(args.sbuild_new, args.sbuild_repo_url)
+		sys.exit(0)
 
-	with open(CFG_FILE) as f:
-		parser.parse_args(f.read().split(), namespace=args)
+	if os.path.exists(CFG_FILE):
+		dist = args.dist
+		remote = args.remote
+		pkgs = args.packages
 
-	# Don't allow default arguments to override those given on command line
-	if dist:
-		args.dist = dist
-	if remote:
-		args.remote = remote
-	if not pkgs:
-		for p in args.packages:
-			pkgs += glob.glob(p)
+		with open(CFG_FILE) as f:
+			parser.parse_args(f.read().split(), namespace=args)
 
-	args.packages = pkgs
+		# Don't allow default arguments to override those given on command line
+		if dist:
+			args.dist = dist
+		if remote:
+			args.remote = remote
+		if not pkgs:
+			for p in args.packages:
+				pkgs += glob.glob(p)
 
-versions = {}
-if not args.ignore_versions and os.path.exists(VERSIONS_FILE):
-	with open(VERSIONS_FILE) as f:
-		versions = json.load(f)
+		args.packages = pkgs
 
-if args.list_dists:
-	dists.dump()
-if args.list_remotes:
-	remotes.dump()
+	versions = {}
+	if not args.ignore_versions and os.path.exists(VERSIONS_FILE):
+		with open(VERSIONS_FILE) as f:
+			versions = json.load(f)
 
-ds = dists.get(args.dist)
-rs = remotes.get(args.remote)
+	if args.list_dists:
+		dists.dump()
+	if args.list_remotes:
+		remotes.dump()
 
-if not ds:
-	raise Exception('No dists matched')
+	ds = dists.get(args.dist)
+	rs = remotes.get(args.remote)
 
-if args.sbuild_del:
-	sbuild_del(ds)
-	sys.exit(0)
+	if not ds:
+		raise Exception('No dists matched')
 
-if args.sbuild_update:
-	sbuild_update(ds)
+	if args.sbuild_del:
+		sbuild_del(ds)
+		sys.exit(0)
 
-pkgs = []
+	if args.sbuild_update:
+		sbuild_update(ds)
 
-if not args.packages:
-	args.packages = ['.']
+	pkgs = []
 
-for pkg in args.packages:
-	if not os.path.exists(pkg):
-		raise Exception('Package %s not found' % pkg)
+	if not args.packages:
+		args.packages = ['.']
 
-	ctrl = '%s/debian/control' % pkg
-	if not os.path.isfile(ctrl):
-		raise Exception('%s not found' % ctrl)
-	with open(ctrl) as f:
-		head = f.readline().strip()
-	name = head.split(':')[1].strip()
+	for pkg in args.packages:
+		if not os.path.exists(pkg):
+			raise Exception('Package %s not found' % pkg)
 
-	format = '%s/debian/source/format' % pkg
-	with open(format) as f:
-		quilted = '(quilt)' in f.read()
+		ctrl = '%s/debian/control' % pkg
+		if not os.path.isfile(ctrl):
+			raise Exception('%s not found' % ctrl)
+		with open(ctrl) as f:
+			head = f.readline().strip()
+		name = head.split(':')[1].strip()
 
-	pkgs.append(Package(
-		path=pkg,
-		name=name,
-		version=get_changelog_version(pkg),
-		quilted=quilted))
+		format = '%s/debian/source/format' % pkg
+		with open(format) as f:
+			quilted = '(quilt)' in f.read()
 
-print('Going to build:')
-for pkg in pkgs:
-	print('    `%s` (v%s) for' % (pkg.name, pkg.version))
-	for d in ds:
-		skip = ''
-		if skip_version(pkg, d):
-			skip = ' (skip - already built)'
-		print('        %s%s' % (d, skip))
+		pkgs.append(Package(
+			path=pkg,
+			name=name,
+			version=get_changelog_version(pkg),
+			quilted=quilted))
 
-print()
-print('And upload to:')
-if rs:
-	for r in rs:
-		print('	%s' % r)
-else:
-	print('	<no uploads>')
+	print('Going to build:')
+	for pkg in pkgs:
+		print('    `%s` (v%s) for' % (pkg.name, pkg.version))
+		for d in ds:
+			skip = ''
+			if skip_version(pkg, d):
+				skip = ' (skip - already built)'
+			print('        %s%s' % (d, skip))
 
-print()
-res = raw_input('Confirm? [y/N] ')
-if res.lower() != 'y':
-	print('Aborting...')
-	sys.exit(1)
+	print()
+	print('And upload to:')
+	if rs:
+		for r in rs:
+			print('	%s' % r)
+	else:
+		print('	<no uploads>')
 
-orig_tars = set()
-for pkg in pkgs:
-	for d in ds:
-		if skip_version(pkg, d):
-			continue
+	print()
+	res = raw_input('Confirm? [y/N] ')
+	if res.lower() != 'y':
+		print('Aborting...')
+		sys.exit(1)
 
-		tmpdir = tempfile.mkdtemp(prefix='debs-')
-		try:
-			pkg.rebuild_tar()
+	for pkg in pkgs:
+		for d in ds:
+			if skip_version(pkg, d):
+				continue
 
-			sb_args = copy.deepcopy(args)
+			tmpdir = tempfile.mkdtemp(prefix='debs-')
+			try:
+				pkg.rebuild_tar()
 
-			cfg = os.path.join(pkg.path, '.debs')
-			if os.path.exists(cfg):
-				with open(cfg) as f:
-					parser.parse_args(
-						f.read().split(),
-						namespace=sb_args)
+				sb_args = copy.deepcopy(args)
 
-			parts = d.split('-')
-			run_sbuild(sb_args, parts[1], parts[0], pkg, tmpdir)
+				cfg = os.path.join(pkg.path, '.debs')
+				if os.path.exists(cfg):
+					with open(cfg) as f:
+						parser.parse_args(
+							f.read().split(),
+							namespace=sb_args)
 
-			pkg.quilt_clean()
+				parts = d.split('-')
+				run_sbuild(sb_args, parts[1], parts[0], pkg, tmpdir)
 
-			changes_file = find_changes_file(tmpdir, pkg.name)
-			for r in rs:
-				check_run('dput', r, changes_file)
+				pkg.quilt_clean()
 
-			versions[skip_key(pkg, d)] = pkg.version
-		finally:
-			shutil.rmtree(tmpdir)
+				changes_file = find_changes_file(tmpdir, pkg.name)
+				for r in rs:
+					check_run('dput', r, changes_file)
 
-if not args.ignore_versions and not args.no_versions:
-	with open(VERSIONS_FILE, 'w') as f:
-		json.dump(versions, f)
+				versions[skip_key(pkg, d)] = pkg.version
+			finally:
+				shutil.rmtree(tmpdir)
+
+	if not args.ignore_versions and not args.no_versions:
+		with open(VERSIONS_FILE, 'w') as f:
+			json.dump(versions, f)
+
+if __name__ == '__main__':
+	main()

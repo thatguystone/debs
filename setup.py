@@ -1,7 +1,10 @@
+import imp
 from distutils.core import setup
 
+debs = imp.load_source('debs', 'debs')
+
 setup(name='debs',
-	version='1.0.1',
+	version=debs.get_changelog_version('.'),
 	description='Automated .deb builder',
 	author='Andrew Stone',
 	author_email='a@stoney.io',
