@@ -427,8 +427,6 @@ rs = remotes.get(args.remote)
 
 if not ds:
 	raise Exception('No dists matched')
-if not rs:
-	raise Exception('No remotes matched')
 
 if args.sbuild_del:
 	sbuild_del(ds)
@@ -471,6 +469,14 @@ for pkg in pkgs:
 		if skip_version(pkg, d):
 			skip = ' (skip - already built)'
 		print('        %s%s' % (d, skip))
+
+print()
+print('And upload to:')
+if rs:
+	for r in rs:
+		print('	%s' % r)
+else:
+	print('	<no uploads>')
 
 print()
 res = raw_input('Confirm? [y/N] ')
