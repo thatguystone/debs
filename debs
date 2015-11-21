@@ -3,6 +3,8 @@
 from __future__ import print_function
 
 import argparse
+import copy
+import getpass
 import glob
 import json
 import multiprocessing
@@ -61,18 +63,26 @@ def check_run(*args, **kwargs):
 		if p:
 			p.wait()
 
-def run_sbuild(arch, dist, pkg, tmpdir):
+def run_sbuild(sb_args, arch, dist, pkg, tmpdir):
 	while True:
 		try:
-			check_run('sbuild',
+			args = []
+
+			if sb_args.sb_user:
+				args += ['sudo', '-u', sb_args.sb_user]
+
+			args += [
+				'sbuild',
 				'--source',
 				'--arch', arch,
 				'--dist', dist,
-				'-j', str(multiprocessing.cpu_count()),
+				'-j', str(sb_args.sb_jobs),
 				'--post-build-commands',
-					"""%s --sbuild-hook-clean=%%SBUILD_DSC""" % os.path.abspath(__file__),
-				os.path.abspath(pkg.path),
-				cwd=tmpdir)
+					'{} '.format(os.path.abspath(__file__)) +
+					'--sbuild-hook-clean=%%SBUILD_DSC',
+				os.path.abspath(pkg.path)]
+
+			check_run(*args, cwd=tmpdir)
 			return
 		except RunException as e:
 			res = raw_input(
@@ -288,8 +298,8 @@ def find_changes_file(outdir, pkg):
 		raise Exception('Changes file for %s not found' % pkg)
 	return files[0]
 
-def get_changelog_version(pkg):
-	log = '%s/debian/changelog' % pkg
+def get_changelog_version(pkg_path):
+	log = '%s/debian/changelog' % pkg_path
 	with open(log) as f:
 		m = CHANGELOG_VERSION.match(f.read())
 
@@ -360,6 +370,18 @@ parser.add_argument(
 	'--sbuild-hook-clean',
 	metavar='<path/to.dsc>',
 	help='post-build hook for sbuild')
+
+sb_parser = parser.add_argument_group('sbuild arguments')
+sb_parser.add_argument(
+	'--sb-user',
+	default=None,
+	metavar=getpass.getuser(),
+	help='which user to run sbuild as')
+sb_parser.add_argument(
+	'--sb-jobs',
+	type=int, metavar=multiprocessing.cpu_count(),
+	default=multiprocessing.cpu_count(),
+	help='jobs flag to pass to sbuild')
 
 args = parser.parse_args()
 
@@ -466,8 +488,17 @@ for pkg in pkgs:
 		try:
 			pkg.rebuild_tar()
 
+			sb_args = copy.deepcopy(args)
+
+			cfg = os.path.join(pkg.path, '.debs')
+			if os.path.exists(cfg):
+				with open(cfg) as f:
+					parser.parse_args(
+						f.read().split(),
+						namespace=sb_args)
+
 			parts = d.split('-')
-			run_sbuild(parts[1], parts[0], pkg, tmpdir)
+			run_sbuild(sb_args, parts[1], parts[0], pkg, tmpdir)
 
 			pkg.quilt_clean()
 
