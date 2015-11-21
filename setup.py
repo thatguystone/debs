@@ -10,7 +10,4 @@ setup(name='debs',
 	author_email='a@stoney.io',
 	url='https://github.com/thatguystone/debs',
 	scripts=['debs'],
-	data_files=[
-		('/usr/bin', ['debs-sign-remote']),
-	],
 )
