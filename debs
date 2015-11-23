@@ -52,7 +52,7 @@ def run(cmd):
 	return p.communicate()[0]
 
 def check_run(*args, **kwargs):
-	print('I: running `%s`' % ' '.join(args))
+	print('I: running %s' % list(args))
 
 	p = None
 	try:
