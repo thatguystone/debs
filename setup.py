@@ -9,5 +9,5 @@ setup(name='debs',
 	author='Andrew Stone',
 	author_email='a@stoney.io',
 	url='https://github.com/thatguystone/debs',
-	scripts=['debs'],
+	scripts=['debs', 'debs-sign-remote'],
 )

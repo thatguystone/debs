@@ -79,7 +79,7 @@ def run_sbuild(sb_args, arch, dist, pkg, tmpdir):
 				'-j', str(sb_args.sb_jobs),
 				'--post-build-commands',
 					'{} '.format(os.path.abspath(__file__)) +
-					'--sbuild-hook-clean=%%SBUILD_DSC',
+					'--sbuild-hook-clean=%SBUILD_DSC',
 				os.path.abspath(pkg.path)]
 
 			check_run(*args, cwd=tmpdir)
@@ -284,6 +284,7 @@ def sbuild_hook_clean(dsc):
 	def unlink(p):
 		try:
 			os.unlink(p)
+			print(p)
 		except:
 			pass
 
@@ -310,9 +311,6 @@ def get_changelog_version(pkg_path):
 
 def skip_key(pkg, dist):
 	return '%s[%s]' % (pkg.name, dist)
-
-dists = Dists()
-remotes = Remotes()
 
 parser = argparse.ArgumentParser(description='Build a Debian package and dput it')
 parser.add_argument(
@@ -417,6 +415,9 @@ def main():
 	if not args.ignore_versions and os.path.exists(VERSIONS_FILE):
 		with open(VERSIONS_FILE) as f:
 			versions = json.load(f)
+
+	dists = Dists()
+	remotes = Remotes()
 
 	if args.list_dists:
 		dists.dump()
