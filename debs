@@ -12,6 +12,7 @@ import os
 import os.path
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -71,6 +72,11 @@ def run_sbuild(sb_args, arch, dist, pkg, tmpdir):
 			if sb_args.sb_user:
 				args += ['sudo', '-u', sb_args.sb_user]
 
+			env = os.environ.copy()
+			if sb_args.sb_env:
+				for d in sb_args.sb_env:
+					env.update(**d)
+
 			args += [
 				'sbuild',
 				'--source',
@@ -82,7 +88,7 @@ def run_sbuild(sb_args, arch, dist, pkg, tmpdir):
 					'--sbuild-hook-clean=%SBUILD_DSC',
 				os.path.abspath(pkg.path)]
 
-			check_run(*args, cwd=tmpdir)
+			check_run(*args, cwd=tmpdir, env=env)
 			return
 		except RunException as e:
 			res = raw_input(
@@ -309,6 +315,12 @@ def get_changelog_version(pkg_path):
 
 	return m.group(1)
 
+def parse_args(f, ns):
+	c = f.read().replace('\n', ' ')
+	parser.parse_args(
+		shlex.split(c),
+		namespace=ns)
+
 def skip_key(pkg, dist):
 	return '%s[%s]' % (pkg.name, dist)
 
@@ -368,15 +380,20 @@ parser.add_argument(
 
 sb_parser = parser.add_argument_group('sbuild arguments')
 sb_parser.add_argument(
-	'--sb-user',
-	default=None,
-	metavar=getpass.getuser(),
-	help='which user to run sbuild as')
-sb_parser.add_argument(
 	'--sb-jobs',
 	type=int, metavar=multiprocessing.cpu_count(),
 	default=multiprocessing.cpu_count(),
 	help='jobs flag to pass to sbuild')
+sb_parser.add_argument(
+	'--sb-env',
+	type=json.loads, metavar='{json}',
+	action='append',
+	help='json dictionary of extra environment variables to pass to sbuild')
+sb_parser.add_argument(
+	'--sb-user',
+	default=None,
+	metavar=getpass.getuser(),
+	help='which user to run sbuild as')
 
 def main():
 	def skip_version(pkg, dist):
@@ -398,7 +415,7 @@ def main():
 		pkgs = args.packages
 
 		with open(CFG_FILE) as f:
-			parser.parse_args(f.read().split(), namespace=args)
+			parse_args(f, args)
 
 		# Don't allow default arguments to override those given on command line
 		if dist:
@@ -497,12 +514,10 @@ def main():
 
 				sb_args = copy.deepcopy(args)
 
-				cfg = os.path.join(pkg.path, '.debs')
+				cfg = os.path.join(pkg.path, CFG_FILE)
 				if os.path.exists(cfg):
 					with open(cfg) as f:
-						parser.parse_args(
-							f.read().split(),
-							namespace=sb_args)
+						parse_args(f, sb_args)
 
 				parts = d.split('-')
 				run_sbuild(sb_args, parts[1], parts[0], pkg, tmpdir)
