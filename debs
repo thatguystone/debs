@@ -65,12 +65,16 @@ def check_run(*args, **kwargs):
 			p.wait()
 
 def run_sbuild(sb_args, arch, dist, pkg, tmpdir):
+	abs_pkg_path = os.path.abspath(pkg.path) + '/'
+
 	while True:
 		try:
 			env = os.environ.copy()
 			if sb_args.sb_env:
 				for d in sb_args.sb_env:
-					env.update(**d)
+					for k, v in d.iteritems():
+						env[k] = v.format(
+							PKG_DIR=abs_pkg_path)
 
 			args = []
 			if sb_args.sb_user:
@@ -90,7 +94,7 @@ def run_sbuild(sb_args, arch, dist, pkg, tmpdir):
 				'--post-build-commands',
 					'{} '.format(os.path.abspath(__file__)) +
 					'--sbuild-hook-clean=%SBUILD_DSC',
-				os.path.abspath(pkg.path)]
+				abs_pkg_path]
 
 			check_run(*args, cwd=tmpdir, env=env)
 			return
