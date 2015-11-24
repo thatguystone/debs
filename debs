@@ -67,15 +67,19 @@ def check_run(*args, **kwargs):
 def run_sbuild(sb_args, arch, dist, pkg, tmpdir):
 	while True:
 		try:
-			args = []
-
-			if sb_args.sb_user:
-				args += ['sudo', '-u', sb_args.sb_user]
-
 			env = os.environ.copy()
 			if sb_args.sb_env:
 				for d in sb_args.sb_env:
 					env.update(**d)
+
+			args = []
+			if sb_args.sb_user:
+				args += ['sudo']
+
+				if sb_args.sb_user_keep_env:
+					args += ['-E']
+
+				args += ['-u', sb_args.sb_user]
 
 			args += [
 				'sbuild',
@@ -394,6 +398,10 @@ sb_parser.add_argument(
 	default=None,
 	metavar=getpass.getuser(),
 	help='which user to run sbuild as')
+sb_parser.add_argument(
+	'--sb-user-keep-env',
+	action='store_true',
+	help='preserve current user env variables across sudo')
 
 def main():
 	def skip_version(pkg, dist):
