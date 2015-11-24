@@ -1,11 +1,12 @@
-#!/usr/bin/env python
-
-from __future__ import print_function
+#!/usr/bin/env python3
 
 import argparse
+import configparser
 import copy
+import datetime
 import getpass
 import glob
+import io
 import json
 import multiprocessing
 import os
@@ -40,7 +41,7 @@ SBUILD_COMPONENTS = {
 
 CHANGELOG_VERSION = re.compile(r'.* \((.*)\) .*; urgency=')
 
-def run(cmd):
+def run(*cmd):
 	p = subprocess.Popen(cmd,
 		stdout=subprocess.PIPE,
 		stderr=subprocess.PIPE)
@@ -49,7 +50,7 @@ def run(cmd):
 	if p.returncode != 0:
 		raise Exception('`%s` exited with %d' % (' '.join(cmd), p.returncode))
 
-	return p.communicate()[0]
+	return p.communicate()[0].decode('utf-8')
 
 def check_run(*args, **kwargs):
 	print('I: running %s' % list(args))
@@ -99,7 +100,7 @@ def run_sbuild(sb_args, arch, dist, pkg, tmpdir):
 			check_run(*args, cwd=tmpdir, env=env)
 			return
 		except RunException as e:
-			res = raw_input(
+			res = input(
 				'E: `%s` on %s-%s failed with exit code %d. '
 				'Try again? [y/N] '
 					% (pkg.name, dist, arch, e.code))
@@ -155,7 +156,7 @@ class Dists(object):
 	dists = set()
 
 	def __init__(self):
-		envs = run(['schroot', '-l', '--all'])
+		envs = run('schroot', '-l', '--all')
 		envs = [e.replace('source:', '').replace('-sbuild', '').replace('chroot:', '')
 			for e in envs.split('\n')
 			if e.endswith('sbuild')]
@@ -197,7 +198,7 @@ class Remotes(object):
 	default = None
 
 	def __init__(self):
-		hosts = run(['dput', '--host-list'])
+		hosts = run('dput', '--host-list')
 		for h in hosts.split('\n'):
 			if len(h.strip()) == 0 or 'Default Method' in h:
 				continue
@@ -268,7 +269,7 @@ def sbuild_del(ds):
 		print('    `%s`' % d)
 
 	print()
-	res = raw_input('Confirm? [y/N] ')
+	res = input('Confirm? [y/N] ')
 	if res.lower() != 'y':
 		print('Aborting...')
 		sys.exit(1)
@@ -284,13 +285,27 @@ def sbuild_del(ds):
 			shell=True)
 		check_run('sudo', 'rm', '/var/lib/sbuild/%s.tar' % d)
 
-def sbuild_update(dists):
+def sbuild_update(*dists):
 	for d in dists:
 		parts = d.split('-')
 		check_run('sudo', 'sbuild-update',
 			'-udcar',
 			'--arch', parts[1], parts[0])
-	sys.exit(0)
+
+def sbuild_check_update(dist):
+	name = '%s-sbuild' % dist
+	out = run('sudo', 'schroot',
+		'--config',
+		'-c', name)
+
+	config = configparser.ConfigParser()
+	config.read_string(out)
+
+	f = config.get(name, 'file', fallback=None)
+	if f:
+		ts = datetime.datetime.fromtimestamp(os.path.getmtime(f))
+		if ts < (datetime.datetime.now() - datetime.timedelta(days=7)):
+			sbuild_update(dist)
 
 def sbuild_hook_clean(dsc):
 	filename, file_extension = os.path.splitext(dsc)
@@ -464,7 +479,8 @@ def main():
 		sys.exit(0)
 
 	if args.sbuild_update:
-		sbuild_update(ds)
+		sbuild_update(*ds)
+		sys.exit(0)
 
 	pkgs = []
 
@@ -510,10 +526,13 @@ def main():
 		print('	<no uploads>')
 
 	print()
-	res = raw_input('Confirm? [y/N] ')
+	res = input('Confirm? [y/N] ')
 	if res.lower() != 'y':
 		print('Aborting...')
 		sys.exit(1)
+
+	for d in ds:
+		sbuild_check_update(d)
 
 	for pkg in pkgs:
 		for d in ds:
