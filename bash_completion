@@ -12,7 +12,8 @@ _debs()
 	prev=${COMP_WORDS[COMP_CWORD-1]}
 	opts='-h --help -c --clean -d --dist --ignore-version \
 		--list-dists --list-remotes --no-versions -r --remote \
-		--sbuild-del --sbuild-new --sbuild-repo-url --sbuild-update'
+		--sbuild-del --sbuild-new --sbuild-repo-url --sbuild-update \
+		--sb-jobs --sb-env --sb-user --sb-user-keep-env'
 
 	case $prev in
 	--dist|-d)
