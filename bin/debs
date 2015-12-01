@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+
+import logging
+
+from debs import Debs, cfg, sbuild
+
+sbuild.ensure(cfg.Cfg(), 'stretch-amd64')

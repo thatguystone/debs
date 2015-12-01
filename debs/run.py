@@ -1,0 +1,52 @@
+import logging
+import subprocess
+
+log = logging.getLogger(__name__)
+
+def _to_bytes(obj):
+	if obj and isinstance(obj, str):
+		obj = obj.encode("utf-8")
+	return obj
+
+def _to_str(b):
+	return b.decode('utf-8').strip()
+
+def get(*args):
+	log.info('running %s', args)
+
+	out = subprocess.check_output(args,
+		stderr=subprocess.DEVNULL)
+
+	return _to_str(out)
+
+def check(*args, input=None, **kwargs):
+	log.info('running %s', args)
+
+	p = None
+	try:
+		if input:
+			kwargs['stdin'] = subprocess.PIPE
+
+		p = subprocess.Popen(args, **kwargs)
+		p.communicate(input=_to_bytes(input))
+		if p.returncode != 0:
+			raise RunException(p.returncode)
+	finally:
+		if p:
+			p.wait()
+
+def ignore(*args, **kwargs):
+	try:
+		check(*args, **kwargs)
+	except Exception as e:
+		log.info('ignoring run failure: %s', e)
+
+def write(file, data):
+	check('sudo', 'tee', file, input=data, stdout=subprocess.DEVNULL)
+
+class RunException(Exception):
+	def __init__(self, code):
+		self.code = code
+
+	def __str__(self):
+		return 'Command exited with status: {}'.format(self.code)
