@@ -1,5 +1,7 @@
 import itertools
 
+from . import util
+
 _ARCHS = ['amd64', 'i386']
 
 _DEBIAN = [
@@ -28,6 +30,9 @@ _MIRRORS = {
 	'debian': (_DEBIAN, 'http://httpredir.debian.org/debian'),
 	'ubuntu': (_UBUNTU, 'http://us.archive.ubuntu.com/ubuntu/'),
 }
+
+def split(env):
+	return env.split('-')
 
 def match(*specs, installed=None):
 	specs = list(filter(None, specs))
@@ -75,13 +80,15 @@ def sources(release, cfg=None):
 		if release in specs[0]:
 			break
 
-	srcs = 'deb {} {} {}\n'.format(main, release, specs[1])
-	srcs += 'deb-src {} {} {}\n'.format(main, release, specs[1])
+	srcs = set([
+		'deb {} {} {}'.format(main, release, specs[1]).strip(),
+		'deb-src {} {} {}'.format(main, release, specs[1]).strip(),
+	])
 
 	if cfg and cfg.extra_sources(dist, release):
-		srcs += cfg.extra_sources(dist, release)
+		srcs |= cfg.extra_sources(dist, release)
 
-	return srcs.strip() + '\n'
+	return '\n'.join(sorted(srcs)) + '\n'
 
 class UnknownRelease(Exception):
 	pass

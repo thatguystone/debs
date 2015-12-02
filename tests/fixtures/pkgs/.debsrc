@@ -1,0 +1,6 @@
+[sbuild]
+key = 0xDEADBEEF
+dry-run = true
+
+[env]
+merp = blah " test something"

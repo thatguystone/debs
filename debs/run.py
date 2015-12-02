@@ -1,5 +1,7 @@
 import logging
+import os
 import subprocess
+import sys
 
 log = logging.getLogger(__name__)
 
@@ -27,8 +29,23 @@ def check(*args, input=None, **kwargs):
 		if input:
 			kwargs['stdin'] = subprocess.PIPE
 
+		# Nose puts a StringIO instance as stdout, and that makes test output
+		# ugly. Redirect as necessary.
+		testing = sys.stdout != sys.__stdout__
+		if testing and 'stdout' not in kwargs:
+			kwargs['stdout'] = subprocess.PIPE
+		if testing and 'stderr' not in kwargs:
+			kwargs['stderr'] = subprocess.STDOUT
+
+		if 'env' in kwargs:
+			kwargs['env'] = os.environ.copy().update(kwargs['env'])
+
 		p = subprocess.Popen(args, **kwargs)
-		p.communicate(input=_to_bytes(input))
+		out = p.communicate(input=_to_bytes(input))
+
+		if testing:
+			print(_to_str(out[0]))
+
 		if p.returncode != 0:
 			raise RunException(p.returncode)
 	finally:

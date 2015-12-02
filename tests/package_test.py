@@ -4,19 +4,19 @@ from debs import package
 from . import util
 
 def test_load():
-	p = package.load(util.fixture('basic', 'crazy-formatting'))
+	p = package.load(util.fixture('pkgs', 'crazy-formatting'))
 	assert_equal(p.name, 'crazy-formatting')
 	assert_equal(p.version, '1.2.3')
 
-	p = package.load(util.fixture('basic', 'native'))
+	p = package.load(util.fixture('pkgs', 'native'))
 	assert_equal(p.name, 'native')
 	assert_equal(p.version, '1.2.3')
 
-	p = package.load(util.fixture('basic', 'quilt'))
+	p = package.load(util.fixture('pkgs', 'quilt'))
 	assert_equal(p.name, 'quilt')
-	assert_equal(p.version, '3.2.1')
+	assert_equal(p.version, '3.2.1-1')
 
-	p = package.load(util.fixture('basic', 'native-dsc', 'native_1.2.3.dsc'))
+	p = package.load(util.fixture('pkgs', 'native-dsc', 'native_1.2.3.dsc'))
 	assert_equal(p.name, 'native')
 	assert_equal(p.version, '1.2.3')
 

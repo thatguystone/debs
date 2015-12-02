@@ -2,36 +2,92 @@ import getpass
 import glob
 import grp
 import logging
+import os
 import os.path
 import pickle
 import shutil
 import sys
+import tempfile
+import time
 
-from . import dists, run
+from . import dists, run, util
 
 log = logging.getLogger(__name__)
 
-# First run dpkg-source on the package from the tempdir, then run sbuild from the tempdir on the generated dsc. This should keep all files together!
-
 DEFAULT_PKGS = [
 	'build-essential',
+	'ccache',
 	'eatmydata',
 	'lintian',
+	'debhelper',
 ]
+
+CCACHE_DIR = '/var/cache/ccache-sbuild'
 
 SUFFIX = '-debs'
 
-if getpass.getuser() != 'root' and getpass.getuser() not in grp.getgrnam('sbuild').gr_mem:
-	log.error('Current user (%s) not in sbuild group. Adding...', getpass.getuser())
-	run.check('sudo', 'sbuild-adduser', getpass.getuser())
-	log.error('You need to log out and log back in before you can use sbuild.')
-	sys.exit(1)
+def _preconfigure():
+	# Share apt archive cache
+	_check_file_has(
+		'/etc/schroot/sbuild/fstab',
+		'/var/cache/apt/archives',
+		rest=' /var/cache/apt/archives	none rw,bind	0	0')
+
+	_check_ccache()
+	_check_user_in_group()
+
+def _check_ccache():
+	if not os.path.exists(CCACHE_DIR):
+		run.check(
+			'sudo',
+			'install',
+			'--compare',
+			'--group=sbuild',
+			'--mode=2775', # Inherit sbuild group
+			'-d', CCACHE_DIR)
+
+	# Share ccache stuffs
+	_check_file_has(
+		'/etc/schroot/sbuild/fstab',
+		'{}'.format(CCACHE_DIR),
+		rest='	{}	none rw,bind	0	0'.format(CCACHE_DIR))
+
+	_check_file_is(
+		os.path.join(CCACHE_DIR, 'ccache.conf'),
+		util.strip_lines('''
+		cache_dir = {DIR}
+		umask = 002
+		hard_link = false
+		compression = true
+		'''.format(
+			DIR=CCACHE_DIR)))
+
+	_check_file_is(
+		os.path.join(CCACHE_DIR, 'env'),
+		util.strip_lines('''#! /bin/bash
+		export CCACHE_DIR={}
+		export PATH="/usr/lib/ccache:$PATH"
+		exec "$@"
+		'''.format(CCACHE_DIR)),
+		executable=True)
+
+def _check_user_in_group():
+	u = getpass.getuser()
+	if u != 'root' and u not in grp.getgrnam('sbuild').gr_mem:
+		log.error('Current user (%s) not in sbuild group. Adding...', u)
+		run.check('sudo', 'sbuild-adduser', u)
+		log.error('You need to log out and log back in before you can use sbuild.')
+		sys.exit(1)
 
 def _dir(release, arch):
 	return '/var/lib/debs/{}-{}'.format(release, arch)
 
 def _cfg_file(release, arch):
-	return glob.glob('/etc/schroot/chroot.d/{}-{}-debs-*'.format(release, arch))[0]
+	f = '/etc/schroot/chroot.d/{}-{}-debs-*'.format(release, arch)
+	gs = glob.glob(f)
+	if gs:
+		return gs[0]
+	return f
 
 def _schroot_name(release, arch, source=False):
 	name = '{}-{}{}'.format(release, arch, SUFFIX)
@@ -78,47 +134,76 @@ def _reconfig(cfg, release, arch):
 
 	c = {}
 	cs = None
+	lastmod = -1
 	if os.path.exists(p):
 		with open(p, 'rb') as f:
 			cs = f.read()
 		c = pickle.loads(cs)
+		lastmod = os.path.getmtime(p)
 
-	_check_cfg_has(release, arch, 'union-type=overlay\n')
+	_check_cfg_has(release, arch, 'union-type=', 'overlay')
 	_reconfig_mirrors(release, arch, cfg, dir)
 	_reconfig_pkgs(release, arch, cfg, c)
-	_check_cfg_has(release, arch, 'command-prefix=eatmydata\n')
+	_check_cfg_has(release, arch,
+		'command-prefix=',
+		'{}/env,eatmydata'.format(CCACHE_DIR))
+
+	upgraded = False
+	if lastmod != -1:
+		upgraded = _check_upgrade(cfg, lastmod, release, arch)
 
 	ncs = pickle.dumps(c)
-	if ncs != cs:
+	if ncs != cs or upgraded:
 		run.write(p, ncs)
 
-def _check_cfg_has(release, arch, line):
-	cfgf = _cfg_file(release, arch)
-
-	with open(cfgf) as f:
-		cfg = f.read()
-
-	if not cfg.endswith('\n'):
-		cfg += '\n'
-
-	if not line.endswith('\n'):
-		line += '\n'
-
-	if line not in cfg:
-		cfg += line
-		run.write(cfgf, cfg)
+def _check_cfg_has(release, arch, pfx, rest):
+	_check_file_has(_cfg_file(release, arch), pfx, rest)
 
 def _reconfig_mirrors(release, arch, cfg, dir):
 	srcs = os.path.join(dir, 'etc', 'apt', 'sources.list')
 
-	with open(srcs) as f:
-		have = f.read()
-
-	want = dists.sources(release, cfg=cfg)
-
-	if want != have:
-		run.write(srcs, want)
+	if not _check_file_is(srcs, dists.sources(release, cfg=cfg)):
 		_update(release, arch)
+
+def _check_file_has(path, pfx, rest):
+	with open(path) as f:
+		contents = f.read()
+
+	if not contents.endswith('\n'):
+		contents += '\n'
+
+	complete = pfx + rest
+	if not complete.endswith('\n'):
+		complete += '\n'
+
+	if complete in contents:
+		return
+
+	lines = contents.splitlines()
+	for i, l in enumerate(lines):
+		if l.startswith(pfx):
+			lines[i] = complete.strip()
+			break
+	else:
+		lines.append(complete.strip())
+
+	out = '\n'.join(lines) + '\n'
+	run.write(path, out)
+
+def _check_file_is(path, contents, executable=False):
+	have = ''
+	if os.path.exists(path):
+		with open(path) as f:
+			have = f.read()
+
+	had = contents == have
+	if not had:
+		run.write(path, contents)
+
+	if executable and not had:
+		run.check('sudo', 'chmod', '+x', path)
+
+	return had
 
 def _reconfig_pkgs(release, arch, cfg, c):
 	have = set(c.get('pkgs', []))
@@ -140,8 +225,55 @@ def _reconfig_pkgs(release, arch, cfg, c):
 
 	c['pkgs'] = sorted(want)
 
+def _check_upgrade(cfg, lastmod, release, arch):
+	now = time.time()
+	age = now - lastmod
+
+	if age > cfg.refresh_after:
+		run.check(
+			'sudo',
+			'sbuild-update',
+			'-udcar',
+			_schroot_name(release, arch))
+
 def _update(release, arch):
-	_run_in_chroot(release, arch, 'apt-get', 'update')
+	run.check(
+		'sudo',
+		'sbuild-update',
+		'-u',
+		_schroot_name(release, arch))
+
+def _make_sbuildrc(cfg, path):
+	require = None
+	curr = os.getenv('SBUILD_CONFIG')
+	if curr:
+		curr = os.path.abspath(curr)
+		if os.path.exists(curr):
+			require = curr
+
+	with open(path, 'w') as f:
+		if require:
+			f.write('require "{}";\n'.format(require))
+
+		if cfg.key:
+			f.write('$key_id = "{}";\n'.format(cfg.key))
+
+		f.write(util.strip_lines('''
+			$run_lintian = {LINTIAN};
+			$lintian_opts = {LINTIAN_OPTS};
+
+			$apt_update = {APT_UPGRADE};
+			$apt_distupgrade = {APT_UPGRADE};
+
+			$build_environment = {BUILD_ENV};
+
+			1;
+			'''.format(
+				LINTIAN=int(cfg.lintian),
+				LINTIAN_OPTS=cfg.lintian_args,
+				APT_UPGRADE=int(cfg.apt_upgrade),
+				BUILD_ENV=util.perl_dict(cfg.env),
+			)))
 
 def delete(release, arch):
 	run.ignore('sudo', 'rm', '-rf', _dir(release, arch))
@@ -150,7 +282,7 @@ def delete(release, arch):
 def installed():
 	envs = set()
 
-	scs = run.get('schroot', '-l', '--all-source-chroots').split('\n')
+	scs = run.get('schroot', '-l', '--all-source-chroots').splitlines()
 	for sc in filter(lambda s: SUFFIX in s, scs):
 		envs.add(sc
 			.replace('source:', '')
@@ -179,15 +311,43 @@ def ensure(cfg, *envs):
 
 	inst = installed()
 	for env in envs:
-		release, arch = env.split('-')
+		release, arch = dists.split(env)
 
 		if env in inst:
 			_reconfig(cfg, release, arch)
 		else:
 			_create(cfg, release, arch)
 
-def build(cfg, env, dsc, tmpdir):
-	pass
+def build(cfg, pkg, env):
+	cfg = cfg.in_path(pkg.path)
+
+	ensure(cfg, env)
+	release, arch = dists.split(env)
+
+	tmpdir = tempfile.mkdtemp(prefix='debs-')
+	sbuildrc = os.path.join(tmpdir, '.sbuildrc')
+	try:
+		dsc = pkg.gen_src(tmpdir)
+		_make_sbuildrc(cfg, sbuildrc)
+
+		if cfg.dry_run:
+			return
+
+		run.check(
+			'sbuild',
+			'--dist', release,
+			'--chroot', _schroot_name(release, arch),
+			'--arch-all',
+			'-j', str(cfg.jobs),
+			dsc,
+			cwd=tmpdir,
+			env={
+				'SBUILD_CONFIG': sbuildrc,
+			})
+	finally:
+		shutil.rmtree(tmpdir, ignore_errors=True)
 
 class SbuildException(Exception):
 	pass
+
+_preconfigure()

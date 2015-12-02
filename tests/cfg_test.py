@@ -1,3 +1,4 @@
+import multiprocessing
 from nose.tools import *
 
 from debs import cfg
@@ -60,20 +61,26 @@ def test_sources_list():
 		deb http://testing {RELEASE}
 	''')
 
-	assert_in(
-		'deb http://testing extras\n\n'
-		'deb http://testing herp\n\n'
-		'deb http://testing testing',
-		c.extra_sources('herp', 'testing'))
-
-	assert_in(
-		'deb http://debian debian\n'
+	srcs = set([
 		'deb http://testing extras',
-		c.extra_sources('debian', 'testing'))
+		'deb http://testing herp',
+		'deb http://testing testing',
+	])
+	assert_equal(
+		srcs,
+		c.extra_sources('herp', 'testing').intersection(srcs))
 
-	assert_in(
+	srcs = set([
 		'deb http://debian debian',
-		c.extra_sources('debian', 'future release'))
+		'deb http://testing extras',
+	])
+	assert_equal(
+		srcs,
+		c.extra_sources('debian', 'testing').intersection(srcs))
+
+	assert_equal(
+		set(['deb http://debian debian']),
+		c.extra_sources('debian', 'future release').intersection(srcs))
 
 def test_packages():
 	c = cfg.Cfg()
@@ -84,21 +91,43 @@ def test_packages():
 	packages-jessie = jessie
 	''')
 
+	pkgs = set(['blerp', 'merp', 'gerp', 'debian'])
 	assert_equal(
-		set(['blerp', 'merp', 'gerp', 'debian']),
-		c.packages('debian', 'sid'))
+		pkgs,
+		pkgs.intersection(c.packages('debian', 'sid')))
 
+	pkgs = set(['blerp', 'merp', 'gerp', 'debian', 'jessie'])
 	assert_equal(
-		set(['blerp', 'merp', 'gerp', 'debian', 'jessie']),
-		c.packages('debian', 'jessie'))
+		pkgs,
+		pkgs.intersection(c.packages('debian', 'jessie')))
 
 def test_climb_sources_list():
-	c = cfg.Cfg(base=util.fixture('basic/quilt'))
-	assert_in(
-		'src http://basic extras\n'
+	c = cfg.Cfg(base=util.fixture('debsrc/subdir'))
+
+	srcs = set([
+		'src http://basic extras',
 		'src http://quilt extras',
-		c.extra_sources('debian', 'testing'))
+	])
+
+	assert_equal(
+		srcs,
+		c.extra_sources('debian', 'testing').intersection(srcs))
 
 def test_climb():
-	c = cfg.Cfg(base=util.fixture('basic/quilt'))
+	c = cfg.Cfg(base=util.fixture('debsrc/subdir'))
 	assert_equal('http://quilt', c.main_mirror('debian', 'testing'))
+
+def test_climb_env():
+	c = cfg.Cfg(base=util.fixture('debsrc/subdir'))
+	assert_equal('YES', c.env['val'])
+
+def test_in_path():
+	c = cfg.Cfg(base=util.fixture('debsrc/'))
+	assert_equal(multiprocessing.cpu_count(), c.jobs)
+
+	nc = c.in_path(util.fixture('debsrc/another'))
+	assert_equal(123, nc.jobs)
+
+	assert_not_equal(c.c, nc.c)
+	assert_not_equal(c.cs, nc.cs)
+	assert_not_equal(c.loaded, nc.loaded)

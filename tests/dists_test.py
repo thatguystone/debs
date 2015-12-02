@@ -53,9 +53,10 @@ def test_packages():
 	packages-jessie = jessie
 	''')
 
+	pkgs = set(['blerp', 'merp', 'gerp', 'debian', 'jessie'])
 	assert_equal(
-		set(['blerp', 'merp', 'gerp', 'debian', 'jessie']),
-		dists.packages('jessie', cfg=c))
+		pkgs,
+		pkgs.intersection(dists.packages('jessie', cfg=c)))
 
 def test_sources():
 	c = cfg.Cfg()

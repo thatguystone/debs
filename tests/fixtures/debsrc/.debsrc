@@ -1,3 +1,6 @@
 [repos]
 debian = http://basic
 extras-debian = src http://basic extras
+
+[env]
+val = NO
