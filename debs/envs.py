@@ -17,9 +17,9 @@ _UBUNTU = [
 	'xenial',
 ]
 
-_DISTS = _DEBIAN + _UBUNTU
+_ENVS = _DEBIAN + _UBUNTU
 
-DISTS = sorted(['-'.join(c) for c in itertools.product(_DISTS, _ARCHS)])
+ENVS = sorted(['-'.join(c) for c in itertools.product(_ENVS, _ARCHS)])
 
 _COMPONENTS = {
 	'debian': (_DEBIAN, 'main contrib non-free'),
@@ -39,20 +39,20 @@ def match(*specs, installed=None):
 	if not specs:
 		specs = ['all']
 
-	all = DISTS.copy()
+	all = ENVS.copy()
 	if installed:
 		all += list(installed)
 
-	dists = set()
+	envs = set()
 	for spec in specs:
 		if spec == 'all':
-			dists.update(all)
+			envs.update(all)
 		else:
-			for d in all:
-				if d.startswith(spec) or d.endswith(spec):
-					dists.add(d)
+			for e in all:
+				if e.startswith(spec) or e.endswith(spec):
+					envs.add(e)
 
-	return dists
+	return envs
 
 def main_mirror(release, cfg=None):
 	for dist, specs in _MIRRORS.items():

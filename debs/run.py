@@ -14,7 +14,7 @@ def _to_str(b):
 	return b.decode('utf-8').strip()
 
 def get(*args):
-	log.info('running %s', args)
+	log.debug('running %s', args)
 
 	out = subprocess.check_output(args,
 		stderr=subprocess.DEVNULL)
@@ -22,7 +22,7 @@ def get(*args):
 	return _to_str(out)
 
 def check(*args, input=None, **kwargs):
-	log.info('running %s', args)
+	log.debug('running %s', args)
 
 	p = None
 	try:

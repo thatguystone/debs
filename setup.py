@@ -1,8 +1,8 @@
-from setuptools import setup
+from distutils.core import setup
 
-from debs import package
+from debs import cfg, package
 
-pkg = package.load('.')
+pkg = package.load('.', cfg.Cfg())
 
 setup(name=pkg.name,
 	version=pkg.version,
@@ -11,8 +11,5 @@ setup(name=pkg.name,
 	author_email='a@stoney.io',
 	url='https://github.com/thatguystone/debs',
 	packages=['debs'],
-	scripts=['bin/debs'],
-	data_files=[
-		('/usr/bin', ['bin/debs-sign-remote'])]
-	],
+	scripts=['bin/debs', 'bin/debs-sign-remote'],
 )

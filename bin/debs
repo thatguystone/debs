@@ -3,7 +3,7 @@
 import argparse
 import logging
 
-from debs import Debs
+from debs import Debs, sbuild
 
 parser = argparse.ArgumentParser(
 	prog='debs',
@@ -12,12 +12,14 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
 	'-c', '--config',
 	action='append', metavar='.debsrc',
+	default=[],
 	help='extra config files to load')
 parser.add_argument(
-	'-d', '--dist',
+	'-e', '--env',
 	type=str,
 	action='append',
-	help='which distro to use (may be given multiple times). '+
+	default=[],
+	help='which environments to use (may be given multiple times). '+
 		'use "all" to build in all. '+
 		'otherwise, does prefix/suffix matching on the given values')
 parser.add_argument(
@@ -25,9 +27,13 @@ parser.add_argument(
 	action='store_true',
 	help='ignore already-built version information and build everything')
 parser.add_argument(
-	'--list-dists',
+	'--list-envs',
 	action='store_true',
-	help='list all dists known to sbuild')
+	help='list all environments known to sbuild')
+parser.add_argument(
+	'--delete-envs',
+	action='store_true',
+	help='delete the chroots for the selected environments')
 parser.add_argument(
 	'--list-remotes',
 	action='store_true',
@@ -49,6 +55,10 @@ parser.add_argument(
 	'-y', '--batch',
 	action='store_true',
 	help='run in batch mode, assuming the answer to every question is "yes"')
+parser.add_argument(
+	'-v', '--verbose',
+	action='store_true',
+	help='be verbose about what\'s going on behind the scenes)')
 parser.add_argument('package',
 	nargs='*', type=str,
 	default=[],
@@ -56,11 +66,33 @@ parser.add_argument('package',
 
 args = parser.parse_args()
 
+loglvl = logging.INFO
+if args.verbose:
+	loglvl = logging.DEBUG
+
+logging.basicConfig(
+	level=loglvl,
+	format='%(levelname)-.1s: %(message)s')
+
 d = Debs(
-	dists=args.dist,
+	envs=args.env,
 	remotes=args.remote,
 	pkgs=args.package,
+	extra_cfgs=args.config,
 )
+
+def dump_list(title, l, star=None):
+	print('{}:'.format(title))
+	for i in l:
+		s = ''
+		if star:
+			s = '*' if star(i) else ''
+		print('    {} {}'.format(i, s))
+
+def dump_tlist(title, l, star=None):
+	print('{}:'.format(title))
+	for i in l:
+		print('    {} ({})'.format(i[0], i[1]))
 
 if args.batch:
 	d.cfg.batch = True
@@ -71,9 +103,16 @@ if args.no_versions:
 if args.ignore_versions:
 	d.cfg.ignore_versions = True
 
-if args.list_dists:
-	d.list_dists()
+if args.list_envs:
+	installed = sbuild.installed()
+
+	dump_list('Environments (*=installed)',
+		d.get_envs('all' if not args.env else None),
+		star=lambda s: s in installed)
 elif args.list_remotes:
-	d.list_dists()
+	dump_tlist('Remotes',
+		d.get_remotes('all' if not args.remote else None))
+elif args.delete_envs:
+	d.delete()
 else:
 	d.build()

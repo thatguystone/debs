@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 
-from . import dists, dput, run, util
+from . import envs, dput, run, util
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +31,8 @@ def _preconfigure():
 	_check_file_has(
 		'/etc/schroot/sbuild/fstab',
 		'/var/cache/apt/archives',
-		rest=' /var/cache/apt/archives	none rw,bind	0	0')
+		rest=' /var/cache/apt/archives	none rw,bind	0	0',
+		ignore_missing=True)
 
 	_check_ccache()
 	_check_user_in_group()
@@ -50,7 +51,8 @@ def _check_ccache():
 	_check_file_has(
 		'/etc/schroot/sbuild/fstab',
 		'{}'.format(CCACHE_DIR),
-		rest='	{}	none rw,bind	0	0'.format(CCACHE_DIR))
+		rest='	{}	none rw,bind	0	0'.format(CCACHE_DIR),
+		ignore_missing=True)
 
 	_check_file_is(
 		os.path.join(CCACHE_DIR, 'ccache.conf'),
@@ -121,11 +123,11 @@ def _create(cfg, release, arch):
 			'--arch={}'.format(arch),
 			release,
 			dir,
-			dists.main_mirror(release, cfg=cfg))
+			envs.main_mirror(release, cfg=cfg))
 
 		_reconfig(cfg, release, arch)
 	except:
-		delete(release, arch)
+		_delete(release, arch)
 		raise
 
 def _reconfig(cfg, release, arch):
@@ -162,10 +164,13 @@ def _check_cfg_has(release, arch, pfx, rest):
 def _reconfig_mirrors(release, arch, cfg, dir):
 	srcs = os.path.join(dir, 'etc', 'apt', 'sources.list')
 
-	if not _check_file_is(srcs, dists.sources(release, arch, cfg=cfg)):
+	if not _check_file_is(srcs, envs.sources(release, arch, cfg=cfg)):
 		_update(release, arch)
 
-def _check_file_has(path, pfx, rest):
+def _check_file_has(path, pfx, rest, ignore_missing=False):
+	if ignore_missing and not os.path.exists(path):
+		return
+
 	with open(path) as f:
 		contents = f.read()
 
@@ -207,7 +212,7 @@ def _check_file_is(path, contents, executable=False):
 
 def _reconfig_pkgs(release, arch, cfg, c):
 	have = set(c.get('pkgs', []))
-	want = dists.packages(release, arch, cfg=cfg).union(set(DEFAULT_PKGS))
+	want = envs.packages(release, arch, cfg=cfg).union(set(DEFAULT_PKGS))
 
 	if have != want:
 		rm = have - want
@@ -230,6 +235,8 @@ def _check_upgrade(cfg, lastmod, release, arch):
 	age = now - lastmod
 
 	if age > cfg.refresh_after:
+		log.info('%s-%s out of date; upgrading...', release, arch)
+
 		run.check(
 			'sudo',
 			'sbuild-update',
@@ -279,9 +286,21 @@ def _make_sbuildrc(cfg, path):
 				BUILD_ENV=util.perl_dict(cfg.env),
 			)))
 
-def delete(release, arch):
+def _delete(release, arch):
+	name = _schroot_name(release, arch)
+
+	run.ignore('sudo', 'schroot',
+		'--end-session', '--all-sessions',
+		'chroot:{}'.format(name))
+	run.ignore('sudo', 'schroot',
+		'--end-session', '--all-sessions',
+		'source:{}'.format(name))
 	run.ignore('sudo', 'rm', '-rf', _dir(release, arch))
 	run.ignore('sudo', 'rm', '-rf', _cfg_file(release, arch))
+
+def delete(env):
+	release, arch = envs.split(env)
+	_delete(release, arch)
 
 def installed():
 	envs = set()
@@ -300,22 +319,22 @@ def match(*specs, only_installed=False):
 	"""
 
 	inst = set(installed())
-	ds = dists.match(*specs, installed=inst)
+	ds = envs.match(*specs, installed=inst)
 
 	if only_installed:
 		ds = ds.intersection(inst)
 
 	return sorted(ds)
 
-def ensure(cfg, *envs):
+def ensure(cfg, *envss):
 	"""
 	Ensure that an sbuild environment for the given release-arch environments
 	exist.
 	"""
 
 	inst = installed()
-	for env in envs:
-		release, arch = dists.split(env)
+	for env in envss:
+		release, arch = envs.split(env)
 
 		if env in inst:
 			_reconfig(cfg, release, arch)
@@ -323,12 +342,17 @@ def ensure(cfg, *envs):
 			_create(cfg, release, arch)
 
 def build(pkg, env):
+	"""
+	Build the given package for in the given environment. Return if the
+	package was uploaded anywhere.
+	"""
+
 	cfg = pkg.cfg
 
 	if not cfg.dry_run:
 		ensure(cfg, env)
 
-	release, arch = dists.split(env)
+	release, arch = envs.split(env)
 
 	tmpdir = tempfile.mkdtemp(prefix='debs-')
 	sbuildrc = os.path.join(tmpdir, '.sbuildrc')
@@ -360,8 +384,12 @@ def build(pkg, env):
 			})
 
 		chgs = glob.glob(os.path.join(tmpdir, '*.changes'))[0]
-		for r in cfg.remotes:
+		remotes = cfg.remotes
+
+		for r in remotes:
 			dput.put(r, chgs)
+
+		return len(remotes) > 0
 	finally:
 		shutil.rmtree(tmpdir, ignore_errors=True)
 

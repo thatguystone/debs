@@ -1,31 +1,47 @@
 _debs_list()
 {
-	debs --list-$1 | sed 1d | sed 's/\*//g'
+	$1 --list-$2 | _debs_filter
+}
+
+_debs_filter()
+{
+	# Ignore header
+	read l
+
+	while read l; do
+		echo "$l" | sed 's/\*//g'
+	done
 }
 
 _debs()
 {
-	local cur prev opts
+	local cmd cur prev opts envs remotes
 	COMPREPLY=()
 
+	cmd=${COMP_WORDS[0]}
 	cur=${COMP_WORDS[COMP_CWORD]}
 	prev=${COMP_WORDS[COMP_CWORD-1]}
-	opts='-h --help -c --clean -d --dist --ignore-version \
-		--list-dists --list-remotes --no-versions -r --remote \
-		--sbuild-del --sbuild-new --sbuild-repo-url --sbuild-update \
-		--sb-jobs --sb-env --sb-user --sb-user-keep-env'
+	opts='-h --help -c --config -e --env --ignore-version \
+		--list-envs --list-remotes --no-versions -r --remote \
+		--delete-env -n --dry-run -y --batch -v --verbose'
 
 	case $prev in
-	--dist|-d)
-		dists=$(_debs_list dists)
-		COMPREPLY=( $( compgen -W "$dists" -- "$cur" ) )
+	--env|-e)
+		envs=$(_debs_list $cmd envs)
+		COMPREPLY=( $( compgen -W "$envs" -- "$cur" ) )
 		;;
 	--remote|-r)
-		dists=$(_debs_list remotes | awk '{ print $1 }')
-		COMPREPLY=( $( compgen -W "$dists" -- "$cur" ) )
+		remotes=$(_debs_list $cmd remotes | awk '{ print $1 }')
+		COMPREPLY=( $( compgen -W "$remotes" -- "$cur" ) )
+		;;
+	--delete-env)
+		envs=$($cmd --list-envs | grep '\*' | _debs_filter)
+		COMPREPLY=( $( compgen -W "$envs" -- "$cur" ) )
 		;;
 	*)
 		COMPREPLY=( $( compgen -W "$opts" -d -- "$cur" ) )
+		_filedir -d
+		_filedir dsc
 		;;
 	esac
 

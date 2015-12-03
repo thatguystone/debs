@@ -12,6 +12,8 @@ CHANGELOG_VERSION = re.compile(r'.* \((.*)\) .*; urgency=')
 log = logging.getLogger(__name__)
 
 def load(path, cfg):
+	path = os.path.abspath(path)
+
 	if os.path.splitext(path)[1].lower() == '.dsc':
 		return _Dsc(path, cfg)
 

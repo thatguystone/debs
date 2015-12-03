@@ -10,8 +10,13 @@ def match(*names):
 		name = parts[0]
 		url = parts[1].split()[0]
 
-		if not names or name in names or url in names:
-			remotes.add(name)
+		matches = \
+			'all' in names or \
+			not names or \
+			name in names or \
+			url in names
+		if matches:
+			remotes.add((name, url))
 
 	remotes = list(remotes)
 	remotes.sort()
@@ -19,4 +24,5 @@ def match(*names):
 	return remotes
 
 def put(name, chgs):
-	pass
+	print(name, chgs)
+	raise Exception('implement me')

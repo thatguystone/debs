@@ -44,7 +44,7 @@ PROPS = [
 		'default': False,
 	},
 	{
-		'name': 'dists',
+		'name': 'envs',
 		'type': set,
 		'group': GROUP,
 		'default': 'all',

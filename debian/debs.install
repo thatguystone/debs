@@ -1,0 +1,3 @@
+#!/usr/bin/dh-exec
+usr/bin/*
+misc/bash_completion => usr/share/bash-completion/completions/debs
