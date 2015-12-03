@@ -7,6 +7,9 @@ override_dh_auto_clean:
 	python3 setup.py clean
 
 override_dh_auto_build:
+	a2x --directory debian --format manpage man/debs.1.txt
+	a2x --directory debian --format manpage man/debs-sign-remote.1.txt
+	a2x --directory debian --format manpage man/debsrc.5.txt
 
 override_dh_auto_install:
 	python3 setup.py install --root=$(DESTDIR) --install-layout=deb

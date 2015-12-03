@@ -72,7 +72,7 @@ class Debs(object):
 					skip = ' (skip - already built)'
 				print('         {}{}'.format(env, skip))
 			print('      And upload to:')
-			for r in self.get_remotes(pkg.cfg):
+			for r in self.get_remotes(cfg=pkg.cfg):
 				print('         {} ({})'.format(r[0], r[1]))
 
 	def _try_build(self, pkg, env):

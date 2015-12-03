@@ -1,0 +1,53 @@
+DEBS(1)
+=======
+:doctype: manpage
+
+
+NAME
+----
+debs - do stuff
+
+
+SYNOPSIS
+--------
+*debs*
+
+
+DESCRIPTION
+-----------
+mich descibes
+
+
+OPTIONS
+-------
+*-v, --verbose*::
+    Verbosely print processing information and configuration file
+    checks to stderr.
+
+
+FILES
+-----
+~/.debs/debsrc::
+    Config. Mention example file.
+
+~/.debs/versions::
+    Versions file
+
+*/.debsrc::
+    User-specific configuration.
+
+AUTHOR
+------
+Andrew Stone <a@stoney.io>
+
+
+RESOURCES
+---------
+GitHub: <https://github.com/thatguystone/debs>
+
+
+COPYRIGHT
+---------
+Copyright © 2015 Andrew Stone
+
+Distributed under the MIT license.
