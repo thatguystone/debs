@@ -1,6 +1,6 @@
 [repos]
 debian = http://quilt
-extras-debian = src http://quilt extras
+extra-debian = src http://quilt extras
 
 [env]
 val = YES

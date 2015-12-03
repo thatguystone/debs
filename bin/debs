@@ -1,7 +1,79 @@
 #!/usr/bin/env python3
 
+import argparse
 import logging
 
-from debs import Debs, cfg, sbuild
+from debs import Debs
 
-sbuild.ensure(cfg.Cfg(), 'stretch-amd64')
+parser = argparse.ArgumentParser(
+	prog='debs',
+	description='Build a Debian package and dput it')
+
+parser.add_argument(
+	'-c', '--config',
+	action='append', metavar='.debsrc',
+	help='extra config files to load')
+parser.add_argument(
+	'-d', '--dist',
+	type=str,
+	action='append',
+	help='which distro to use (may be given multiple times). '+
+		'use "all" to build in all. '+
+		'otherwise, does prefix/suffix matching on the given values')
+parser.add_argument(
+	'--ignore-versions',
+	action='store_true',
+	help='ignore already-built version information and build everything')
+parser.add_argument(
+	'--list-dists',
+	action='store_true',
+	help='list all dists known to sbuild')
+parser.add_argument(
+	'--list-remotes',
+	action='store_true',
+	help='list all remotes known to dput')
+parser.add_argument(
+	'-n', '--dry-run',
+	action='store_true',
+	help="don't build or upload, just do some basic checks")
+parser.add_argument(
+	'--no-versions',
+	action='store_true',
+	help='if no versions file should be written')
+parser.add_argument(
+	'-r', '--remote',
+	type=str,
+	action='append',
+	help='which remote to use (may be given multiple times)')
+parser.add_argument(
+	'-y', '--batch',
+	action='store_true',
+	help='run in batch mode, assuming the answer to every question is "yes"')
+parser.add_argument('package',
+	nargs='*', type=str,
+	default=[],
+	help='which packages/.dscs to build')
+
+args = parser.parse_args()
+
+d = Debs(
+	dists=args.dist,
+	remotes=args.remote,
+	pkgs=args.package,
+)
+
+if args.batch:
+	d.cfg.batch = True
+
+if args.no_versions:
+	d.cfg.no_versions = True
+
+if args.ignore_versions:
+	d.cfg.ignore_versions = True
+
+if args.list_dists:
+	d.list_dists()
+elif args.list_remotes:
+	d.list_dists()
+else:
+	d.build()

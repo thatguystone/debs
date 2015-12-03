@@ -4,7 +4,7 @@ from debs import cfg, dists
 
 def test_match():
 	ds = dists.match('')
-	assert_equal(0, len(ds))
+	assert_equal(len(dists.DISTS), len(ds))
 
 	ds = dists.match('all')
 	assert_not_equal(0, len(ds))
@@ -26,11 +26,11 @@ def test_main_mirror():
 	c.load_string('''
 	[repos]
 	debian = http://debian
-	extras-debian = \
+	extra-debian = \
 		deb http://debian extras
 
 	sid = http://sid
-	extras-sid = \
+	extra-sid = \
 		deb http://sid extras
 	''')
 
@@ -43,35 +43,35 @@ def test_main_mirror_error():
 	dists.main_mirror('NONE')
 
 def test_packages():
-	assert_equal(set(), dists.packages('jessie'))
+	assert_equal(set(), dists.packages('jessie', 'amd64'))
 
 	c = cfg.Cfg()
 	c.load_string('''
-	[debs]
-	packages = blerp, merp, gerp
-	packages-debian = debian
-	packages-jessie = jessie
+	[packages]
+	all = blerp, merp, gerp
+	debian = debian
+	jessie = jessie
 	''')
 
 	pkgs = set(['blerp', 'merp', 'gerp', 'debian', 'jessie'])
 	assert_equal(
 		pkgs,
-		pkgs.intersection(dists.packages('jessie', cfg=c)))
+		pkgs.intersection(dists.packages('jessie', 'amd64', cfg=c)))
 
 def test_sources():
 	c = cfg.Cfg()
 	c.load_string('''
 	[repos]
 	debian = http://debian
-	extras-debian = \
+	extra-debian = \
 		deb http://debian extras
 
 	sid = http://sid
-	extras-sid = \
+	extra-sid = \
 		deb http://sid extras
 	''')
 
-	srcs = dists.sources('sid', cfg=c)
+	srcs = dists.sources('sid', 'amd64', cfg=c)
 	has = [
 		'deb http://sid sid main contrib non-free\n',
 		'deb-src http://sid sid main contrib non-free\n',
@@ -84,4 +84,4 @@ def test_sources():
 
 @raises(dists.UnknownRelease)
 def test_sources_error():
-	dists.sources('NONE')
+	dists.sources('NONE', 'i387')

@@ -20,16 +20,16 @@ def test_match():
 def test_build_native():
 	p = util.fixture('pkgs', 'native')
 	os.environ['SBUILD_CONFIG'] = util.fixture('pkgs', '.sbuildrc')
-	sbuild.build(cfg.Cfg(), package.load(p), _DISTS[0])
+	sbuild.build(package.load(p, cfg.Cfg()), _DISTS[0])
 
 def test_build_native_dsc():
 	p = util.fixture('pkgs', 'native-dsc', 'native_1.2.3.dsc')
-	sbuild.build(cfg.Cfg(), package.load(p), _DISTS[0])
+	sbuild.build(package.load(p, cfg.Cfg()), _DISTS[0])
 
 def test_build_quilt():
 	p = util.fixture('pkgs', 'quilt')
-	sbuild.build(cfg.Cfg(), package.load(p), _DISTS[0])
+	sbuild.build(package.load(p, cfg.Cfg()), _DISTS[0])
 
 def test_build_quilt_dsc():
 	p = util.fixture('pkgs', 'quilt-dsc', 'quilt_3.2.1-1.dsc')
-	sbuild.build(cfg.Cfg(), package.load(p), _DISTS[0])
+	sbuild.build(package.load(p, cfg.Cfg()), _DISTS[0])

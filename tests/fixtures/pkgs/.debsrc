@@ -1,6 +1,8 @@
 [sbuild]
 key = 0xDEADBEEF
 dry-run = true
+batch = true
+no-versions = true
 
 [env]
 merp = blah " test something"

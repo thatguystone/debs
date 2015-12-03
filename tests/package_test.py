@@ -1,41 +1,48 @@
 from nose.tools import *
 
-from debs import package
+from debs import cfg, package
 from . import util
 
 def test_load():
-	p = package.load(util.fixture('pkgs', 'crazy-formatting'))
+	c = cfg.Cfg()
+
+	p = package.load(util.fixture('pkgs', 'crazy-formatting'), c)
 	assert_equal(p.name, 'crazy-formatting')
 	assert_equal(p.version, '1.2.3')
 
-	p = package.load(util.fixture('pkgs', 'native'))
+	p = package.load(util.fixture('pkgs', 'native'), c)
 	assert_equal(p.name, 'native')
 	assert_equal(p.version, '1.2.3')
 
-	p = package.load(util.fixture('pkgs', 'quilt'))
+	p = package.load(util.fixture('pkgs', 'quilt'), c)
 	assert_equal(p.name, 'quilt')
 	assert_equal(p.version, '3.2.1-1')
 
-	p = package.load(util.fixture('pkgs', 'native-dsc', 'native_1.2.3.dsc'))
+	p = package.load(util.fixture('pkgs', 'native-dsc', 'native_1.2.3.dsc'), c)
 	assert_equal(p.name, 'native')
 	assert_equal(p.version, '1.2.3')
 
 @raises(package.InvalidPackage)
 def test_no_format():
-	package.load(util.fixture('errors', 'no-format'))
+	c = cfg.Cfg()
+	package.load(util.fixture('errors', 'no-format'), c)
 
 @raises(package.InvalidPackage)
 def test_no_control():
-	package.load(util.fixture('errors', 'no-control'))
+	c = cfg.Cfg()
+	package.load(util.fixture('errors', 'no-control'), c)
 
 @raises(package.InvalidPackage)
 def test_no_changelog():
-	package.load(util.fixture('errors', 'no-changelog'))
+	c = cfg.Cfg()
+	package.load(util.fixture('errors', 'no-changelog'), c)
 
 @raises(package.InvalidPackage)
 def test_invalid_changelog():
-	package.load(util.fixture('errors', 'invalid-changelog'))
+	c = cfg.Cfg()
+	package.load(util.fixture('errors', 'invalid-changelog'), c)
 
 @raises(package.InvalidPackage)
 def test_unsupported_type():
-	package.load(util.fixture('errors', 'unsupported-type'))
+	c = cfg.Cfg()
+	package.load(util.fixture('errors', 'unsupported-type'), c)

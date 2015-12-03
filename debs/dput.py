@@ -10,10 +10,13 @@ def match(*names):
 		name = parts[0]
 		url = parts[1].split()[0]
 
-		if name in names or url in names:
+		if not names or name in names or url in names:
 			remotes.add(name)
 
 	remotes = list(remotes)
 	remotes.sort()
 
 	return remotes
+
+def put(name, chgs):
+	pass

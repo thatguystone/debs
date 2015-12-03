@@ -1,5 +1,6 @@
 import abc
 import glob
+import logging
 import os.path
 import re
 import shutil
@@ -8,12 +9,15 @@ from . import run
 
 CHANGELOG_VERSION = re.compile(r'.* \((.*)\) .*; urgency=')
 
-def load(path):
+log = logging.getLogger(__name__)
+
+def load(path, cfg):
 	if os.path.splitext(path)[1].lower() == '.dsc':
-		return _Dsc(path)
+		return _Dsc(path, cfg)
 
 	cl = os.path.join(path, 'debian', 'changelog')
 	if not os.path.isfile(cl):
+		_check_meant_dsc(path)
 		raise InvalidPackage(path, 'missing debian/changelog')
 
 	format = os.path.join(path, 'debian', 'source', 'format')
@@ -24,17 +28,27 @@ def load(path):
 		fmt = f.read()
 
 	if '3.0 (quilt)' in fmt:
-		return _Quilt(path)
+		return _Quilt(path, cfg)
 
 	if '3.0 (native)' in fmt:
-		return _Native(path)
+		return _Native(path, cfg)
 
 	raise InvalidPackage(path, 'unsupported format: {}'.format(fmt))
 
+def _check_meant_dsc(path):
+	dscs = glob.glob(os.path.join(path, '*.dsc'))
+	if dscs:
+		log.info(
+			'%s is not a valid path, but it contains a dsc; '
+			'did you mean to use %s?',
+				path,
+				dscs[0])
+
 class _Pkg(abc.ABC):
 	@abc.abstractmethod
-	def __init__(self, path):
+	def __init__(self, path, cfg):
 		self.path = path
+		self.cfg = cfg.in_path(self.path)
 
 	def _get_key(self, key, path):
 		if not os.path.isfile(path):
@@ -52,8 +66,8 @@ class _Pkg(abc.ABC):
 		pass
 
 class _Native(_Pkg):
-	def __init__(self, path):
-		super().__init__(path)
+	def __init__(self, path, cfg):
+		super().__init__(path, cfg)
 
 		self.name = self._get_key(
 			'Source',
@@ -104,8 +118,8 @@ class _Quilt(_Native):
 		shutil.rmtree('%s/.pc/' % self.path, ignore_errors=True)
 
 class _Dsc(_Pkg):
-	def __init__(self, path):
-		super().__init__(path)
+	def __init__(self, path, cfg):
+		super().__init__(path, cfg)
 		self.name = self._get_key('Source', self.path)
 		self.version = self._get_key('Version', self.path)
 

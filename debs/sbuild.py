@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 
-from . import dists, run, util
+from . import dists, dput, run, util
 
 log = logging.getLogger(__name__)
 
@@ -162,7 +162,7 @@ def _check_cfg_has(release, arch, pfx, rest):
 def _reconfig_mirrors(release, arch, cfg, dir):
 	srcs = os.path.join(dir, 'etc', 'apt', 'sources.list')
 
-	if not _check_file_is(srcs, dists.sources(release, cfg=cfg)):
+	if not _check_file_is(srcs, dists.sources(release, arch, cfg=cfg)):
 		_update(release, arch)
 
 def _check_file_has(path, pfx, rest):
@@ -207,7 +207,7 @@ def _check_file_is(path, contents, executable=False):
 
 def _reconfig_pkgs(release, arch, cfg, c):
 	have = set(c.get('pkgs', []))
-	want = dists.packages(release, cfg=cfg).union(set(DEFAULT_PKGS))
+	want = dists.packages(release, arch, cfg=cfg).union(set(DEFAULT_PKGS))
 
 	if have != want:
 		rm = have - want
@@ -257,6 +257,10 @@ def _make_sbuildrc(cfg, path):
 
 		if cfg.key:
 			f.write('$key_id = "{}";\n'.format(cfg.key))
+
+		if cfg.user:
+			opts = '$schroot_options = ["-q", "--user", "{}""];\n'
+			f.write(opts.format(cfg.user))
 
 		f.write(util.strip_lines('''
 			$run_lintian = {LINTIAN};
@@ -318,10 +322,12 @@ def ensure(cfg, *envs):
 		else:
 			_create(cfg, release, arch)
 
-def build(cfg, pkg, env):
-	cfg = cfg.in_path(pkg.path)
+def build(pkg, env):
+	cfg = pkg.cfg
 
-	ensure(cfg, env)
+	if not cfg.dry_run:
+		ensure(cfg, env)
+
 	release, arch = dists.split(env)
 
 	tmpdir = tempfile.mkdtemp(prefix='debs-')
@@ -333,17 +339,29 @@ def build(cfg, pkg, env):
 		if cfg.dry_run:
 			return
 
-		run.check(
+		args = [
 			'sbuild',
-			'--dist', release,
-			'--chroot', _schroot_name(release, arch),
 			'--arch-all',
 			'-j', str(cfg.jobs),
-			dsc,
+			'--dist', release,
+			'--chroot', _schroot_name(release, arch),
+		]
+
+		if cfg.include_src:
+			args.append('--source')
+
+		args.append(dsc)
+
+		run.check(
+			*args,
 			cwd=tmpdir,
 			env={
 				'SBUILD_CONFIG': sbuildrc,
 			})
+
+		chgs = glob.glob(os.path.join(tmpdir, '*.changes'))[0]
+		for r in cfg.remotes:
+			dput.put(r, chgs)
 	finally:
 		shutil.rmtree(tmpdir, ignore_errors=True)
 

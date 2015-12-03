@@ -19,7 +19,7 @@ _UBUNTU = [
 
 _DISTS = _DEBIAN + _UBUNTU
 
-DISTS = ['-'.join(c) for c in itertools.product(_DISTS, _ARCHS)]
+DISTS = sorted(['-'.join(c) for c in itertools.product(_DISTS, _ARCHS)])
 
 _COMPONENTS = {
 	'debian': (_DEBIAN, 'main contrib non-free'),
@@ -37,7 +37,7 @@ def split(env):
 def match(*specs, installed=None):
 	specs = list(filter(None, specs))
 	if not specs:
-		return []
+		specs = ['all']
 
 	all = DISTS.copy()
 	if installed:
@@ -64,15 +64,15 @@ def main_mirror(release, cfg=None):
 
 	raise UnknownRelease(release)
 
-def packages(release, cfg=None):
+def packages(release, arch, cfg=None):
 	if cfg:
 		for dist, specs in _MIRRORS.items():
 			if release in specs[0]:
-				return cfg.packages(dist, release)
+				return cfg.extra_packages(dist, release, arch)
 
 	return set()
 
-def sources(release, cfg=None):
+def sources(release, arch, cfg=None):
 	main = main_mirror(release, cfg=cfg)
 
 	# Don't need an error check for this: release verified in main_mirror()
@@ -85,8 +85,8 @@ def sources(release, cfg=None):
 		'deb-src {} {} {}'.format(main, release, specs[1]).strip(),
 	])
 
-	if cfg and cfg.extra_sources(dist, release):
-		srcs |= cfg.extra_sources(dist, release)
+	if cfg and cfg.extra_sources(dist, release, arch):
+		srcs |= cfg.extra_sources(dist, release, arch)
 
 	return '\n'.join(sorted(srcs)) + '\n'
 

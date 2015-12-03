@@ -49,57 +49,95 @@ def test_sources_list():
 	c.load_string('''
 	[repos]
 	debian = http://debian
-	extras-debian = \
+
+	extra-all = deb http://1234 all
+
+	extra-debian = \
 		deb http://debian {DIST}
+	extra-debian-amd64 = \
+		deb http://debamd64 {DIST}
+	extra-debian-i386 = \
+		deb http://debi386 {DIST}
 
 	testing = http://testing
-	extras-testing = \
+	extra-testing = \
 		deb http://testing extras
 
 		deb http://testing {DIST}
 
 		deb http://testing {RELEASE}
+	extra-testing-i386 = \
+		deb http://testingi386 {RELEASE}
 	''')
 
 	srcs = set([
+		'deb http://1234 all',
 		'deb http://testing extras',
 		'deb http://testing herp',
 		'deb http://testing testing',
 	])
 	assert_equal(
 		srcs,
-		c.extra_sources('herp', 'testing').intersection(srcs))
+		c.extra_sources('herp', 'testing', 'amd64').intersection(srcs))
 
 	srcs = set([
+		'deb http://1234 all',
 		'deb http://debian debian',
+		'deb http://debamd64 debian',
 		'deb http://testing extras',
 	])
 	assert_equal(
 		srcs,
-		c.extra_sources('debian', 'testing').intersection(srcs))
+		c.extra_sources('debian', 'testing', 'amd64').intersection(srcs))
 
+	srcs = set([
+		'deb http://1234 all',
+		'deb http://debamd64 debian',
+		'deb http://debian debian',
+	])
 	assert_equal(
-		set(['deb http://debian debian']),
-		c.extra_sources('debian', 'future release').intersection(srcs))
+		srcs,
+		c.extra_sources('debian', 'future release', 'amd64').intersection(srcs))
+
+	srcs = set([
+		'deb http://1234 all',
+		'deb http://debi386 debian',
+	])
+	assert_equal(
+		srcs,
+		c.extra_sources('debian', 'future release', 'i386').intersection(srcs))
 
 def test_packages():
 	c = cfg.Cfg()
 	c.load_string('''
-	[debs]
-	packages = blerp, merp, gerp
-	packages-debian = debian
-	packages-jessie = jessie
+	[packages]
+	all = blerp, merp, gerp
+	debian = debian
+	debian-i386 = debi386
+	debian-amd64 = debamd64
+	jessie = jessie
+	jessie-i386 = jessi386
 	''')
 
 	pkgs = set(['blerp', 'merp', 'gerp', 'debian'])
 	assert_equal(
 		pkgs,
-		pkgs.intersection(c.packages('debian', 'sid')))
+		pkgs.intersection(c.extra_packages('debian', 'sid', 'amd64')))
 
 	pkgs = set(['blerp', 'merp', 'gerp', 'debian', 'jessie'])
 	assert_equal(
 		pkgs,
-		pkgs.intersection(c.packages('debian', 'jessie')))
+		pkgs.intersection(c.extra_packages('debian', 'jessie', 'amd64')))
+
+	pkgs = set(['blerp', 'merp', 'gerp', 'debian', 'jessie', 'debi386', 'jessi386'])
+	assert_equal(
+		pkgs,
+		pkgs.intersection(c.extra_packages('debian', 'jessie', 'i386')))
+
+	pkgs = set(['blerp', 'merp', 'gerp', 'debian', 'jessie', 'debamd64'])
+	assert_equal(
+		pkgs,
+		pkgs.intersection(c.extra_packages('debian', 'jessie', 'amd64')))
 
 def test_climb_sources_list():
 	c = cfg.Cfg(base=util.fixture('debsrc/subdir'))
@@ -111,7 +149,7 @@ def test_climb_sources_list():
 
 	assert_equal(
 		srcs,
-		c.extra_sources('debian', 'testing').intersection(srcs))
+		c.extra_sources('debian', 'testing', 'amd64').intersection(srcs))
 
 def test_climb():
 	c = cfg.Cfg(base=util.fixture('debsrc/subdir'))
@@ -131,3 +169,9 @@ def test_in_path():
 	assert_not_equal(c.c, nc.c)
 	assert_not_equal(c.cs, nc.cs)
 	assert_not_equal(c.loaded, nc.loaded)
+
+def test_override():
+	c = cfg.Cfg()
+
+	c.lintian_args = '-m -j -k'
+	assert_equal(['-m', '-j', '-k'], c.lintian_args)

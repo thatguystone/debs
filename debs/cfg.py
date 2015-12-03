@@ -10,47 +10,129 @@ from . import util
 
 DEFAULTS = [
 	'/etc/debsrc',
-	'~/.debsrc',
+	'~/.debs/debsrc',
 ]
 
 GROUP = 'debs'
+PACKAGES = 'packages'
 REPOS = 'repos'
 SBUILD = 'sbuild'
+
+PROPS = [
+	{
+		'name': 'refresh-after',
+		'type': int,
+		'group': GROUP,
+		'default': 60*60*24*7,
+	},
+	{
+		'name': 'packages',
+		'type': set,
+		'group': GROUP,
+		'default': '.',
+	},
+	{
+		'name': 'no-versions',
+		'type': bool,
+		'group': GROUP,
+		'default': False,
+	},
+	{
+		'name': 'batch',
+		'type': bool,
+		'group': GROUP,
+		'default': False,
+	},
+	{
+		'name': 'dists',
+		'type': set,
+		'group': GROUP,
+		'default': 'all',
+	},
+	{
+		'name': 'remotes',
+		'type': set,
+		'group': GROUP,
+		'default': 'default',
+	},
+	{
+		'name': 'jobs',
+		'type': int,
+		'group': SBUILD,
+		'default': multiprocessing.cpu_count(),
+	},
+	{
+		'name': 'include-src',
+		'type': bool,
+		'group': SBUILD,
+		'default': True,
+	},
+	{
+		'name': 'user',
+		'group': SBUILD,
+		'default': None,
+	},
+	{
+		'name': 'key',
+		'group': SBUILD,
+		'default': None,
+	},
+	{
+		'name': 'lintian',
+		'type': bool,
+		'group': SBUILD,
+		'default': True,
+	},
+	{
+		'name': 'lintian-args',
+		'group': SBUILD,
+		'default': '-i -I',
+		'after': shlex.split,
+	},
+	{
+		'name': 'apt-upgrade',
+		'type': bool,
+		'group': SBUILD,
+		'default': True,
+	},
+	{
+		'name': 'dry-run',
+		'type': bool,
+		'group': SBUILD,
+		'default': False,
+	},
+	{
+		'name': 'ignore-versions',
+		'type': bool,
+		'group': '',
+		'default': False,
+	},
+]
 
 class Cfg(object):
 	def __init__(self, base=os.getcwd(), load=True):
 		self.c = configparser.ConfigParser()
 		self.cs = []
 		self.loaded = set()
+		self._overrides = {}
 
 		if not load:
 			return
 
 		for f in DEFAULTS:
-			self._load(f)
+			self.load(f)
 
 		self._load_tree(base)
 
 	def _load_tree(self, base):
 		paths = []
-		curr = base
-		while curr != '/':
+		curr = os.path.abspath(base)
+		while len(curr) > 1:
 			paths.insert(0, os.path.join(curr, '.debsrc'))
 			curr = os.path.dirname(curr)
 
 		for p in paths:
-			self._load(p)
-
-	def _load(self, f):
-		if not os.path.exists(f) or f in self.loaded:
-			return
-
-		self.loaded.add(f)
-		self.c.read(f)
-
-		c = configparser.ConfigParser()
-		c.read(f)
-		self.cs.append(c)
+			self.load(p)
 
 	def _get_all(self, group, key, fallback=None):
 		res = []
@@ -70,6 +152,7 @@ class Cfg(object):
 		cfg = Cfg(load=False)
 		cfg.cs = copy.copy(self.cs)
 		cfg.loaded = copy.copy(self.loaded)
+		cfg._overrides = copy.copy(self._overrides)
 
 		f = io.StringIO()
 		self.c.write(f)
@@ -78,6 +161,18 @@ class Cfg(object):
 		cfg._load_tree(path)
 
 		return cfg
+
+	def load(self, f):
+		f = util.expand(f)[0]
+		if not os.path.exists(f) or f in self.loaded:
+			return
+
+		self.loaded.add(f)
+		self.c.read(f)
+
+		c = configparser.ConfigParser()
+		c.read(f)
+		self.cs.append(c)
 
 	def load_string(self, str):
 		self.c.read_string(str)
@@ -93,12 +188,15 @@ class Cfg(object):
 
 		return v
 
-	def extra_sources(self, dist, release):
+	def extra_sources(self, dist, release, arch):
 		srcs = ''
 
 		vs = [
-			self._get_all(REPOS, 'extras-' + dist, fallback=None),
-			self._get_all(REPOS, 'extras-' + release, fallback=None),
+			self._get_all(REPOS, 'extra-all', fallback=None),
+			self._get_all(REPOS, 'extra-{}'.format(dist), fallback=None),
+			self._get_all(REPOS, 'extra-{}-{}'.format(dist, arch), fallback=None),
+			self._get_all(REPOS, 'extra-{}'.format(release), fallback=None),
+			self._get_all(REPOS, 'extra-{}-{}'.format(release, arch), fallback=None),
 		]
 		for v in vs:
 			if v:
@@ -109,50 +207,25 @@ class Cfg(object):
 			DIST=dist,
 			RELEASE=release)
 
-		return util.to_set(srcs.split('\n'))
+		return util.to_set(srcs.splitlines())
 
-	def packages(self, dist, release):
+	def extra_packages(self, dist, release, arch):
 		pkgs = []
 
 		vs = [
-			self._get_all(GROUP, 'packages', fallback=None),
-			self._get_all(GROUP, 'packages-' + dist, fallback=None),
-			self._get_all(GROUP, 'packages-' + release, fallback=None),
+			self._get_all(PACKAGES, 'all', fallback=None),
+			self._get_all(PACKAGES, '{}'.format(dist), fallback=None),
+			self._get_all(PACKAGES, '{}-{}'.format(dist, arch), fallback=None),
+			self._get_all(PACKAGES, '{}'.format(release), fallback=None),
+			self._get_all(PACKAGES, '{}-{}'.format(release, arch), fallback=None),
 		]
 
+		pkgs = set()
 		for v in vs:
 			for p in v:
-				pkgs += map(lambda s: s.strip(), p.split(','))
+				pkgs.update(util.to_set(p.split(',')))
 
-		return set(filter(None, pkgs))
-
-	@property
-	def refresh_after(self):
-		return self.c.get(GROUP, 'refresh-after', fallback=60*60*24*7)
-
-	@property
-	def jobs(self):
-		return self.c.getint(SBUILD, 'jobs', fallback=multiprocessing.cpu_count())
-
-	@property
-	def key(self):
-		return self.c.get(SBUILD, 'key', fallback=None)
-
-	@property
-	def lintian(self):
-		return self.c.getboolean(SBUILD, 'lintian', fallback=True)
-
-	@property
-	def lintian_args(self):
-		return shlex.split(self.c.get(SBUILD, 'lintian-args', fallback='-i -I'))
-
-	@property
-	def apt_upgrade(self):
-		return self.c.getboolean(SBUILD, 'apt-upgrade', fallback=True)
-
-	@property
-	def dry_run(self):
-		return self.c.getboolean(SBUILD, 'dry-run', fallback=False)
+		return pkgs
 
 	@property
 	def env(self):
@@ -162,6 +235,47 @@ class Cfg(object):
 				env.update(dict(c.items('env')))
 
 		return env
+
+def _gsetter(p):
+	def getter(self):
+		if p['name'] in self._overrides:
+			return self._overrides[p['name']]
+
+		if 'group' not in p:
+			return p['default']
+
+		t = p.get('type', None)
+
+		fn = self.c.get
+		if t is int:
+			fn = self.c.getint
+		elif t is bool:
+			fn = self.c.getboolean
+		elif t is set:
+			def split(g, n, fallback=None):
+				v = self.c.get(g, n, fallback=fallback)
+				return util.to_set(v.split(','))
+			fn = split
+
+		v = fn(p['group'], p['name'], fallback=p['default'])
+
+		if 'after' in p:
+			v = p['after'](v)
+
+		return v
+
+	def setter(self, v):
+		if 'after' in p:
+			v = p['after'](v)
+		self._overrides[p['name']] = v
+
+	return getter, setter
+
+for p in PROPS:
+	getter, setter = _gsetter(p)
+	setattr(Cfg,
+		p['name'].replace('-', '_'),
+		property(getter, setter))
 
 class ConfigException(Exception):
 	pass

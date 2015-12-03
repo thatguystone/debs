@@ -12,4 +12,7 @@ setup(name=pkg.name,
 	url='https://github.com/thatguystone/debs',
 	packages=['debs'],
 	scripts=['bin/debs'],
+	data_files=[
+		('/usr/bin', ['bin/debs-sign-remote'])]
+	],
 )
