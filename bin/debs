@@ -23,10 +23,6 @@ parser.add_argument(
 		'use "all" to build in all. '+
 		'otherwise, does prefix/suffix matching on the given values')
 parser.add_argument(
-	'--ignore-versions',
-	action='store_true',
-	help='ignore already-built version information and build everything')
-parser.add_argument(
 	'--list-envs',
 	action='store_true',
 	help='list all environments known to sbuild')
@@ -43,6 +39,10 @@ parser.add_argument(
 	action='store_true',
 	help="don't build or upload, just do some basic checks")
 parser.add_argument(
+	'--ignore-versions',
+	action='store_true',
+	help='ignore already-built version information and build everything')
+parser.add_argument(
 	'--no-versions',
 	action='store_true',
 	help='if no versions file should be written')
@@ -58,7 +58,7 @@ parser.add_argument(
 parser.add_argument(
 	'-v', '--verbose',
 	action='store_true',
-	help='be verbose about what\'s going on behind the scenes)')
+	help='print commands as they are executed')
 parser.add_argument('package',
 	nargs='*', type=str,
 	default=[],
@@ -102,6 +102,9 @@ if args.no_versions:
 
 if args.ignore_versions:
 	d.cfg.ignore_versions = True
+
+if args.dry_run:
+	d.cfg.dry_run = True
 
 if args.list_envs:
 	installed = sbuild.installed()

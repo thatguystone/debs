@@ -5,36 +5,107 @@ DEBS(1)
 
 NAME
 ----
-debs - do stuff
+debs - build debian packages and dput them
 
 
 SYNOPSIS
 --------
-*debs*
+*debs* [-h] [-c .debsrc] [-e ENV] [--ignore-versions] [--list-envs]
+       [--delete-envs] [--list-remotes] [-n] [--no-versions] [-r REMOTE]
+       [-y] [-v]
+       [package [package ...]]
 
 
 DESCRIPTION
 -----------
-mich descibes
+Debs was born out of the lack of simple tools for creating, managing, and
+deleting sbuild enviornments while providing simple support for building a
+bunch of packages. Building packages is painful enough already without having
+to remember crazy incantations just to start a build.
 
 
 OPTIONS
 -------
+*-c, --config*::
+
+    Extra configuration files to load.
+
+*-e, --env*::
+
+    Which environment to use for the build. If given multiple times, multiple
+    environments will be used. Environments are matched based on
+    prefix/suffix. For example, if given "stretch-", this will match "stretch-
+    amd64" and "stretch-i386". If given "-amd64", all known "amd64"
+    environments are matched.
+    ::
+    The value "all" may be given to select all known environments.
+
+*--list-envs*::
+
+    List all supported environments. Ones with "*" next to them indiciate that
+    they are installed locally.
+
+*--delete-envs*::
+
+    Delete the chroot environments, as selected by *-e/--env*.
+
+*--list-remotes*::
+
+    List all known remotes (from dput).
+
+*-n, --dry-run*::
+
+    Don't build or upload, just do some basic checks, update environments, and
+    the like.
+
+*--ignore-versions*::
+
+    Ignore the contents of <<X1,*~/.debs/versions*>> and just build
+    everything.
+
+*--no-versions*::
+
+    Don't write a versions file to <<X1,*~/.debs/versions*>>, and ignore it if
+    it already exists.
+
+*-r, --remote*::
+
+    Which remote to use. This may be given multiple times to select multiple
+    remotes. If none is given, uses the remote named "default".
+    ::
+    The value "all" may also be given to select all dput hosts.
+
+*-y, --batch*::
+
+    Assume the answer to every question is yes unless questioning about how to
+    handle errors.
+
 *-v, --verbose*::
-    Verbosely print processing information and configuration file
-    checks to stderr.
+
+    Print commands as they are executed.
 
 
 FILES
 -----
 ~/.debs/debsrc::
-    Config. Mention example file.
 
-~/.debs/versions::
-    Versions file
+    User configuration file. This file is superseded by package- and
+    directory-specific configuration files.
 
 */.debsrc::
-    User-specific configuration.
+
+    Package- and directory-specific configuration. Starting at the current
+    directory, the directory tree is climbed, searching for a .debsrc file in
+    each parent directory. Parent configuration files are applied in reverse
+    order; that is, options in a configuration file of a child supersede those
+    of a parent (with some exceptions; see *debsrc*(5) for more details).
+
+[[X1]]
+~/.debs/versions::
+
+    Contains user-specific build versions. This is used to limit rebuilds of
+    already-built packages when building a directory that contains many
+    packages.
 
 AUTHOR
 ------
@@ -48,6 +119,6 @@ GitHub: <https://github.com/thatguystone/debs>
 
 COPYRIGHT
 ---------
-Copyright © 2015 Andrew Stone
+Copyright © 2015 Andrew Stone <a@stoney.io>
 
 Distributed under the MIT license.

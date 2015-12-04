@@ -1,196 +1,166 @@
-ASCIIDOC(1)
-===========
+debsrc(5)
+=========
 :doctype: manpage
 
 
 NAME
 ----
-asciidoc - converts an AsciiDoc text file to HTML or DocBook
-
-
-SYNOPSIS
---------
-*asciidoc* ['OPTIONS'] 'FILE'
-
+debsrc - configuration file for debs
 
 DESCRIPTION
 -----------
-The asciidoc(1) command translates the AsciiDoc text file 'FILE' to
-DocBook or HTML.  If 'FILE' is '-' then the standard input is used.
+A configuration file with all options can be found at /usr/share/doc/debs/examples/debsrc.ini
 
 
-OPTIONS
--------
-*-a, --attribute*='ATTRIBUTE'::
-    Define or delete document attribute. 'ATTRIBUTE' is formatted like
-    'NAME=VALUE'. Command-line attributes take precedence over
-    document and configuration file attributes.  Alternate acceptable
-    forms are 'NAME' (the 'VALUE' defaults to an empty string);
-    'NAME!' (delete the 'NAME' attribute); 'NAME=VALUE@' (do not override
-    document or configuration file attributes).  Values containing
-    spaces should be enclosed in double-quote characters. This option
-    may be specified more than once.  A special attribute named
-    'trace' controls the output of diagnostic information.
+CONFIGURATION
+-------------
+This is standard ini file parsed with python's configparser, so you may use anything that that supports.
 
-*-b, --backend*='BACKEND'::
-    Backend output file format: 'docbook45', 'xhtml11', 'html4',
-    'html5', 'slidy', 'wordpress' or 'latex' (the 'latex' backend is
-    experimental).  You can also use the backend alias names 'html'
-    (aliased to 'xhtml11') or 'docbook' (aliased to 'docbook45').
-    Defaults to 'html'.  The *--backend* option is also used to manage
-    backend plugins (see <<X1,*PLUGIN COMMANDS*>>).
+All lists are comma-separated.
 
-*-f, --conf-file*='CONF_FILE'::
-    Use configuration file 'CONF_FILE'.Configuration files processed
-    in command-line order (after implicit configuration files).  This
-    option may be specified more than once.
+*[debs]*::
 
-*--doctest*::
-    Run Python doctests in 'asciidoc' module.
+	::
+	*envs* = [all]
 
-*-d, --doctype*='DOCTYPE'::
-    Document type: 'article', 'manpage' or 'book'. The 'book' document
-    type is only supported by the 'docbook' backend.  Default document
-    type is 'article'.
+        Only build for these environments. This can be specified on a per-package basis, and it overrides the parent's config. Options from the command line always override this.
 
-*-c, --dump-conf*::
-    Dump configuration to stdout.
+	::
+	*remotes* = [all]
 
-*--filter*='FILTER'::
-    Specify the name of a filter to be loaded (used to load filters
-    that are not auto-loaded).  This option may be specified more than
-    once. The *--filter* option is also used to manage filter plugins
-    (see <<X1,*PLUGIN COMMANDS*>>).
+		Which remotes to upload to. This can be specified on a per-package basis, and it overrides the parent's config. Options from the command line always override this.
 
-*-h, --help* ['TOPIC']::
-    Print help TOPIC. *--help* 'topics' will print a list of help
-    topics, *--help* 'syntax' summarizes AsciiDoc syntax,
-    *--help* 'manpage' prints the AsciiDoc manpage.
+	::
+	*packages* = [.]
 
-*-e, --no-conf*::
-    Exclude implicitly loaded configuration files except for those
-    named like the input file ('infile.conf' and
-    'infile-backend.conf').
+		Which packages (directories, dscs) to build by default. This is superseded by packages provided on the command line.
 
-*-s, --no-header-footer*::
-    Suppress document header and footer output.
+	::
+	*prompt-rebuild* = true
 
-*-o, --out-file*='OUT_FILE'::
-    Write output to file 'OUT_FILE'. Defaults to the base name of
-    input file with 'backend' extension. If the input is stdin then
-    the outfile defaults to stdout. If 'OUT_FILE' is '-' then the
-    standard output is used.
+		If you want to be prompted to run sbuild again if it fails.
 
-*-n, --section-numbers*::
-    Auto-number HTML article section titles.  Synonym for
-    *--attribute numbered*.
+	::
+	*refresh-after* = 604800
 
-*--safe*::
-    Enable safe mode. Safe mode is disabled by default.  AsciiDoc
-    'safe mode' skips potentially dangerous scripted sections in
-    AsciiDoc source files.
+		How long to go before upgrading sbuild env (in seconds).
 
-*--theme*='THEME'::
-    Specify a theme name.  Synonym for *--attribute theme*='THEME'.
-    The *--theme* option is also used to manage theme plugins (see
-    <<X1,*PLUGIN COMMANDS*>>).
+	::
+	*batch* = false
 
-*-v, --verbose*::
-    Verbosely print processing information and configuration file
-    checks to stderr.
+		Assume the answer to any question is "yes"
 
-*--version*::
-    Print program version number.
+	::
+	*no-versions* = false
 
+		Don't remember built versions. Always try to build everything.
 
-[[X1]]
-PLUGIN COMMANDS
----------------
-The asciidoc(1) *--filter*, *--backend* and *--theme* options are used
-to install, remove and list AsciiDoc filter, backend and theme
-plugins. Syntax:
+*[packages]*::
 
-  asciidoc OPTION install ZIP_FILE [PLUGINS_DIR]
-  asciidoc OPTION remove PLUGIN_NAME [PLUGINS_DIR]
-  asciidoc OPTION list
-  asciidoc OPTION build ZIP_FILE PLUGIN_SOURCE
+	Sometimes it's useful to include extra packages in every schroot environment. These packages are not part of any particular build, but they're typically used (lintian, build-essential, etc), and installing them everything time is wasteful.
 
-Where:
+	::
+	*all* = [LIST]
 
-*OPTION*::
-  asciidoc(1) *--filter*, *--backend* or *--theme* option specifying
-  the type of plugin.
+		Packages to install in every schroot
 
-*PLUGIN_NAME*::
-  A unique plugin name containing only alphanumeric or underscore
-  characters.
+	::
+	*debian* = [LIST]
 
-*ZIP_FILE*::
-  A Zip file containing plugin resources, the name must start with the
-  plugin name e.g.  `my_filter-1.0.zip` packages filter `my_filter`.
+		Packages to install only in debian environments
 
-*PLUGINS_DIR*::
-  The directory containing installed plugins. Each plugin is contained
-  in its own separate subdirectory which has the same name as the
-  plugin.
-  *PLUGINS_DIR* defaults to the `$HOME/.asciidoc/filters` (for
-  filter plugins) or `$HOME/.asciidoc/backends` (for backend plugins) or
-  `$HOME/.asciidoc/themes` (for theme plugins).
+	::
+	*ubuntu* = [LIST]
 
-*PLUGIN_SOURCE*::
-  The name of a directory containing the plugin source files or the
-  name of a single source file.
+		Packages to install only in ubuntu environments
 
-The plugin commands perform as follows:
+	::
+	*<release>* = [LIST], *<release>-<arch>* = [LIST]
 
-*install*::
-  Create a subdirectory in *PLUGINS_DIR* with the same name as the
-  plugin then extract the *ZIP_FILE* into it.
+		Packages to install only in environments of the given release that run the given architecture. For example, this may be "jessie" or "jessie- amd64".
 
-*remove*::
-  Delete the *PLUGIN_NAME* plugin subdirectory and all its contents
-  from the *PLUGINS_DIR*.
+	::
+	*<distro>* = [LIST], *<distro>-<arch>* = [LIST]
 
-*list*::
-  List the names and locations of all installed filter or theme
-  plugins (including standard plugins installed in the global
-  configuration directory).
+		Packages to install only in environments of the given distro that run the given architecture. For example, this may be "debian" or "debian-amd64".
 
-*build*::
-  Create a plugin file named *ZIP_FILE* containing the files and
-  subdirectories specified by *PLUGIN_SOURCE*. File and directory
-  names starting with a period are skipped.
+*[repos]*::
 
+	Sometimes you want to have your environments configured with a different default mirror or with extra sources lines. Got you covered.
+	::
+	The following variables are expanded in this section, depeneding on the environment they're being used in:
 
-EXIT STATUS
------------
-*0*::
-    Success
+		{DIST}     debian, ubuntu, etc
+		{RELEASE}  jessie, stretch, wily, utopic, etc
 
-*1*::
-    Failure (syntax or usage error; configuration error; document
-    processing failure; unexpected error).
+	::
+	*debian* = http://httpredir.debian.org/debian
 
+		Change debian's default apt mirror
 
-BUGS
-----
-See the AsciiDoc distribution BUGS file.
+	::
+	*ubuntu* = http://us.archive.ubuntu.com/ubuntu/
 
+		Change ubuntu's default apt mirror
+
+	::
+	*extra-all* = TEXT
+
+		Add this block to the sources.list file in every environment.
+
+	::
+	*extra-debian* = TEXT, *extra-debian-amd64* = TEXT, *extra-<distro/release>-<arch>* = TEXT
+
+		Add this block to the sources.list file in the environment matched by the given spec.
+
+*[sbuild]*::
+
+    ::
+    *jobs* = <cpu count>
+
+        How mnay jobs to tell sbuild to run the build with.
+
+    ::
+    *key* =
+
+        Which GPG key to use to sign the generated package
+
+    ::
+    *user* = <current user>
+
+        Which user to run the build as
+
+    ::
+    *lintian* = true
+
+        Should lintian run?
+
+    ::
+    *lintian-args* = -i -I
+
+        Arguments to pass to lintian. Parsed with shlex.
+
+    ::
+    *apt-upgrade* = true
+
+        If apt sources should be updated before the build. You probably don't want to disable this.
+
+*[env]*::
+
+    Any key/value pairs defined here will be available in the build environment.
 
 AUTHOR
 ------
-AsciiDoc was originally written by Stuart Rackham. Many people have
-contributed to it.
+Andrew Stone <a@stoney.io>
 
 
 RESOURCES
 ---------
-SourceForge: <http://sourceforge.net/projects/asciidoc/>
-
-Main web site: <http://asciidoc.org/>
+GitHub: <https://github.com/thatguystone/debs>
 
 
-COPYING
--------
-Copyright \(C) 2002-2011 Stuart Rackham. Free use of this software is
-granted under the terms of the GNU General Public License (GPL).
+COPYRIGHT
+---------
+Copyright © 2015 Andrew Stone <a@stoney.io>
+
+Distributed under the MIT license.

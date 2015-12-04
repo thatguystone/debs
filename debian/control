@@ -10,9 +10,12 @@ Build-Depends:
 	debhelper (>= 9),
 	dh-exec,
 	dh-python | python-support,
+	docbook-utils,
+	libxml2-utils,
 	python-all,
 	python3-all,
 	python3-setuptools,
+	xmlto,
 
 Package: debs
 Architecture: all
@@ -40,5 +43,6 @@ Depends:
 	sudo,
 Recommends:
 	bash-completion
-Description: Library version of debs
-	Library that assists in automating managing a bunch of debian packages.
+Description: Python library interface for debs
+	Provides the library that backs the debs executable. Debs is a program for
+	automating building a bunch of .debs locally.

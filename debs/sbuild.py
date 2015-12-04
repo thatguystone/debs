@@ -341,7 +341,7 @@ def ensure(cfg, *envss):
 		else:
 			_create(cfg, release, arch)
 
-def build(pkg, env):
+def build(pkg, env, remotes=[]):
 	"""
 	Build the given package for in the given environment. Return if the
 	package was uploaded anywhere.
@@ -384,12 +384,8 @@ def build(pkg, env):
 			})
 
 		chgs = glob.glob(os.path.join(tmpdir, '*.changes'))[0]
-		remotes = cfg.remotes
-
 		for r in remotes:
 			dput.put(r, chgs)
-
-		return len(remotes) > 0
 	finally:
 		shutil.rmtree(tmpdir, ignore_errors=True)
 

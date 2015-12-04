@@ -24,5 +24,4 @@ def match(*names):
 	return remotes
 
 def put(name, chgs):
-	print(name, chgs)
-	raise Exception('implement me')
+	run.check('dput', name[0], chgs)

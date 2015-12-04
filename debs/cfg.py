@@ -152,7 +152,7 @@ class Cfg(object):
 		cfg = Cfg(load=False)
 		cfg.cs = copy.copy(self.cs)
 		cfg.loaded = copy.copy(self.loaded)
-		cfg._overrides = copy.copy(self._overrides)
+		cfg._overrides = self._overrides
 
 		f = io.StringIO()
 		self.c.write(f)

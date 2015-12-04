@@ -79,12 +79,14 @@ class Debs(object):
 		if self._skip_version(pkg, env):
 			return
 
+		remotes = self.get_remotes(cfg=pkg.cfg)
+
 		ok = False
 		while not ok:
 			try:
-				uploaded = sbuild.build(pkg, env)
+				uploaded = sbuild.build(pkg, env, remotes)
 				ok = True
-				if uploaded:
+				if remotes:
 					self.versions[self._version_key(pkg, env)] = pkg.version
 			except Exception as e:
 				if not self._confirm('Build failed. Retry?',

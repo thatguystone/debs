@@ -8,6 +8,8 @@
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 
+set -e
+
 HOST=$1
 shift
 
@@ -15,7 +17,7 @@ BASE=$1
 shift
 
 if [ -z "$HOST" ] || [ -z "$BASE" ] || [ $# -eq 0 ]; then
-    echo "Usage: sign-remote HOSTNAME REPO_BASE KEY..."
+    echo "Usage: debs-sign-remote HOSTNAME REPO_BASE KEY..."
     exit 2
 fi
 
