@@ -4,16 +4,12 @@ For building your .debs.
 
 This is a wrapper around sbuild and dput, but it automates it all for you.
 
-## Config File
+## Config
 
-The configuration file, named `.debs`, contains default arguments to pass to `debs`. The arguments may be newline separated, if you wish. For example:
+See [misc/debsrc.ini](misc/debsrc.ini).
 
-````
--d wheezy- -d -i386
--r deb-host
-pkg1
-pkg2
-```
+Configuration files live in ~/.debs/debsrc and in each directory. The
+directory-local configs override the user configs.
 
 ## Installing debs
 
