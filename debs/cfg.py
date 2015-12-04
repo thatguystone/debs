@@ -234,7 +234,7 @@ class Cfg(object):
 			if c.has_section('env'):
 				env.update(dict(c.items('env')))
 
-		return env
+		return {k.upper(): v for k, v in env.items()}
 
 def _gsetter(p):
 	def getter(self):
