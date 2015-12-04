@@ -23,7 +23,7 @@ All lists are comma-separated.
 	::
 	*envs* = [all]
 
-        Only build for these environments. This can be specified on a per-package basis, and it overrides the parent's config. Options from the command line always override this.
+		Only build for these environments. This can be specified on a per-package basis, and it overrides the parent's config. Options from the command line always override this.
 
 	::
 	*remotes* = [all]
@@ -115,39 +115,44 @@ All lists are comma-separated.
 
 *[sbuild]*::
 
-    ::
-    *jobs* = <cpu count>
+	::
+	*jobs* = <cpu count>
 
-        How mnay jobs to tell sbuild to run the build with.
+		How mnay jobs to tell sbuild to run the build with.
 
-    ::
-    *key* =
+	::
+	*key* =
 
-        Which GPG key to use to sign the generated package
+		Which GPG key to use to sign the generated package
 
-    ::
-    *user* = <current user>
+	::
+	*user* = <current user>
 
-        Which user to run the build as
+		Which user to run the build as
 
-    ::
-    *lintian* = true
+	::
+	*user-keep-env* = false
 
-        Should lintian run?
+		When running the build as a different user, should the environment of the original user be preserved (ie. `sudo -E` vs plain `sudo`)?
 
-    ::
-    *lintian-args* = -i -I
+	::
+	*lintian* = true
 
-        Arguments to pass to lintian. Parsed with shlex.
+		Should lintian run?
 
-    ::
-    *apt-upgrade* = true
+	::
+	*lintian-args* = -i -I
 
-        If apt sources should be updated before the build. You probably don't want to disable this.
+		Arguments to pass to lintian. Parsed with shlex.
+
+	::
+	*apt-upgrade* = true
+
+		If apt sources should be updated before the build. You probably don't want to disable this.
 
 *[env]*::
 
-    Any key/value pairs defined here will be available in the build environment.
+	Any key/value pairs defined here will be available in the build environment.
 
 AUTHOR
 ------

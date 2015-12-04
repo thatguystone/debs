@@ -73,6 +73,11 @@ PROPS = [
 		'default': None,
 	},
 	{
+		'name': 'user-keep-env',
+		'group': SBUILD,
+		'default': False,
+	},
+	{
 		'name': 'key',
 		'group': SBUILD,
 		'default': None,

@@ -265,10 +265,6 @@ def _make_sbuildrc(cfg, path):
 		if cfg.key:
 			f.write('$key_id = "{}";\n'.format(cfg.key))
 
-		if cfg.user:
-			opts = '$schroot_options = ["-q", "--user", "{}""];\n'
-			f.write(opts.format(cfg.user))
-
 		f.write(util.strip_lines('''
 			$run_lintian = {LINTIAN};
 			$lintian_opts = {LINTIAN_OPTS};
@@ -363,7 +359,16 @@ def build(pkg, env, remotes=[]):
 		if cfg.dry_run:
 			return
 
-		args = [
+		args = []
+		if cfg.user:
+			args += ['sudo']
+
+			if cfg.user_keep_env:
+				args += ['-E']
+
+			args += ['-u', cfg.user]
+
+		args += [
 			'sbuild',
 			'--arch-all',
 			'-j', str(cfg.jobs),
