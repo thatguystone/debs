@@ -4,7 +4,7 @@ import logging
 import os.path
 import sys
 
-from . import cfg, package, sbuild
+from . import cfg, hooks, package, sbuild
 
 __all__ = ['Debs']
 
@@ -143,6 +143,8 @@ class Debs(object):
 		self._confirm('Confirm?')
 
 		for pkg in self.pkgs:
+			hooks.post_confirm(pkg)
+
 			for env in self.get_envs(cfg=pkg.cfg):
 				self._try_build(pkg, env)
 

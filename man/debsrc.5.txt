@@ -55,6 +55,15 @@ All lists are comma-separated.
 
 		Don't remember built versions. Always try to build everything.
 
+*[hooks]*::
+
+	Hooks are run at the given build points. These are run as shell scripts.
+
+	::
+	*post-confirm* =
+
+		Run after the build has been confirmed, once per package
+
 *[packages]*::
 
 	Sometimes it's useful to include extra packages in every schroot environment. These packages are not part of any particular build, but they're typically used (lintian, build-essential, etc), and installing them everything time is wasteful.

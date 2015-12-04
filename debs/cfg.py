@@ -14,6 +14,7 @@ DEFAULTS = [
 ]
 
 GROUP = 'debs'
+HOOKS = 'hooks'
 PACKAGES = 'packages'
 REPOS = 'repos'
 SBUILD = 'sbuild'
@@ -54,6 +55,11 @@ PROPS = [
 		'type': set,
 		'group': GROUP,
 		'default': 'default',
+	},
+	{
+		'name': 'post-confirm',
+		'group': HOOKS,
+		'default': None,
 	},
 	{
 		'name': 'jobs',
