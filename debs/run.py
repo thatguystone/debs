@@ -38,7 +38,9 @@ def check(*args, input=None, **kwargs):
 			kwargs['stderr'] = subprocess.STDOUT
 
 		if 'env' in kwargs:
-			kwargs['env'] = os.environ.copy().update(kwargs['env'])
+			env = os.environ.copy()
+			env.update(kwargs['env'])
+			kwargs['env'] = env
 
 		p = subprocess.Popen(args, **kwargs)
 		out = p.communicate(input=_to_bytes(input))
