@@ -72,8 +72,13 @@ class Debs(object):
 					skip = ' (skip - already built)'
 				print('         {}{}'.format(env, skip))
 			print('      And upload to:')
-			for r in self.get_remotes(cfg=pkg.cfg):
-				print('         {} ({})'.format(r[0], r[1]))
+
+			rs = self.get_remotes(cfg=pkg.cfg)
+			if rs:
+				for r in rs:
+					print('         {} ({})'.format(r[0], r[1]))
+			else:
+					print('         <no uploads>')
 
 	def _try_build(self, pkg, env):
 		if self._skip_version(pkg, env):
