@@ -155,10 +155,6 @@ def test_climb():
 	c = cfg.Cfg(base=util.fixture('debsrc/subdir'))
 	assert_equal('http://quilt', c.main_mirror('debian', 'testing'))
 
-def test_climb_env():
-	c = cfg.Cfg(base=util.fixture('debsrc/subdir'))
-	assert_equal('YES', c.env['val'])
-
 def test_in_path():
 	c = cfg.Cfg(base=util.fixture('debsrc/'))
 	assert_equal(multiprocessing.cpu_count(), c.jobs)

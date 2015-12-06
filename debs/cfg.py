@@ -232,15 +232,6 @@ class Cfg(object):
 
 		return pkgs
 
-	@property
-	def env(self):
-		env = {}
-		for c in self.cs:
-			if c.has_section('env'):
-				env.update(dict(c.items('env')))
-
-		return {k.upper(): v for k, v in env.items()}
-
 def _gsetter(p):
 	def getter(self):
 		if p['name'] in self._overrides:

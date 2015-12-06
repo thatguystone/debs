@@ -150,9 +150,6 @@ All lists are comma-separated.
 
 		If apt sources should be updated before the build. You probably don't want to disable this.
 
-*[env]*::
-
-	Any key/value pairs defined here will be available in the build environment.
 
 AUTHOR
 ------

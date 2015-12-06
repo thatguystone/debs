@@ -272,14 +272,11 @@ def _make_sbuildrc(cfg, path):
 			$apt_update = {APT_UPGRADE};
 			$apt_distupgrade = {APT_UPGRADE};
 
-			$build_environment = {BUILD_ENV};
-
 			1;
 			'''.format(
 				LINTIAN=int(cfg.lintian),
 				LINTIAN_OPTS=cfg.lintian_args,
 				APT_UPGRADE=int(cfg.apt_upgrade),
-				BUILD_ENV=util.perl_dict(cfg.env),
 			)))
 
 def _delete(release, arch):
