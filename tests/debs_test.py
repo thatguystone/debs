@@ -26,7 +26,7 @@ def test_pkg_current_directory():
 def test_get_envs():
 	d = Debs()
 
-	dl = d.get_envs()
+	dl = d.get_envs('all')
 	for dist in envs.ENVS:
 		assert_in(dist, dl)
 
