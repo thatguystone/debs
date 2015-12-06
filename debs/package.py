@@ -89,6 +89,7 @@ class _Native(_Pkg):
 		self.version = m.group(1)
 
 	def gen_src(self, tmpdir):
+		run.check(os.path.join(self.path, 'debian', 'rules'), 'clean')
 		run.check('dpkg-source', '--build', self.path, cwd=tmpdir)
 		return glob.glob('{}/*.dsc'.format(tmpdir))[0]
 
