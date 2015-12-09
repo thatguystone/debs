@@ -121,6 +121,7 @@ def _create(cfg, release, arch):
 			'sbuild-createchroot',
 			'--chroot-suffix={}'.format(SUFFIX),
 			'--arch={}'.format(arch),
+			'--components={}'.format(envs.components(release, sep=',')),
 			release,
 			dir,
 			envs.main_mirror(release, cfg=cfg))

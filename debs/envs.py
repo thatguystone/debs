@@ -72,21 +72,24 @@ def packages(release, arch, cfg=None):
 
 	return set()
 
-def sources(release, arch, cfg=None):
-	main = main_mirror(release, cfg=cfg)
-
-	# Don't need an error check for this: release verified in main_mirror()
+def components(release, sep=' '):
 	for dist, specs in _COMPONENTS.items():
 		if release in specs[0]:
-			break
+			return specs[1].replace(' ', sep)
+
+	raise UnknownRelease(release)
+
+def sources(release, arch, cfg=None):
+	main = main_mirror(release, cfg=cfg)
+	comps = components(release)
 
 	srcs = set([
-		'deb {} {} {}'.format(main, release, specs[1]).strip(),
-		'deb-src {} {} {}'.format(main, release, specs[1]).strip(),
+		'deb {} {} {}'.format(main, release, comps).strip(),
+		'deb-src {} {} {}'.format(main, release, comps).strip(),
 	])
 
-	if cfg and cfg.extra_sources(dist, release, arch):
-		srcs |= cfg.extra_sources(dist, release, arch)
+	if cfg and cfg.extra_sources(release, release, arch):
+		srcs |= cfg.extra_sources(release, release, arch)
 
 	return '\n'.join(sorted(srcs)) + '\n'
 
