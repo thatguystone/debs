@@ -18,6 +18,11 @@ PACKAGES = 'packages'
 REPOS = 'repos'
 SBUILD = 'sbuild'
 
+# Values that are only relevant to a directory
+DIR_ONLY = set([
+	(GROUP, 'packages'),
+])
+
 PROPS = [
 	{
 		'name': 'refresh-after',
@@ -131,13 +136,23 @@ class Cfg(object):
 
 	def _load_tree(self, base):
 		paths = []
-		curr = os.path.abspath(base)
+		top = os.path.abspath(base)
+		curr = top
 		while len(curr) > 1:
 			paths.insert(0, os.path.join(curr, '.debsrc'))
 			curr = os.path.dirname(curr)
 
+		if os.path.isfile(top):
+			top = os.path.dirname(top)
+
 		for p in paths:
+			if p != top:
+				self._clear_path_local()
 			self.load(p)
+
+	def _clear_path_local(self):
+		for do in DIR_ONLY:
+			self.c.remove_option(do[0], do[1])
 
 	def _get_all(self, group, key, fallback=None):
 		res = []
