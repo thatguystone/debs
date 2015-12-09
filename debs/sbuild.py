@@ -213,7 +213,7 @@ def _check_file_is(path, contents, executable=False):
 
 def _reconfig_pkgs(release, arch, cfg, c):
 	have = set(c.get('pkgs', []))
-	want = envs.packages(release, arch, cfg=cfg).union(set(DEFAULT_PKGS))
+	want = envs.packages(release, arch, cfg=cfg) | set(DEFAULT_PKGS)
 
 	if have != want:
 		rm = have - want
