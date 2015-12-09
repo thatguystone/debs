@@ -78,7 +78,7 @@ def test_sources_list():
 	])
 	assert_equal(
 		srcs,
-		c.extra_sources('herp', 'testing', 'amd64').intersection(srcs))
+		c.extra_sources('herp', 'testing', 'amd64') & srcs)
 
 	srcs = set([
 		'deb http://1234 all',
@@ -88,7 +88,7 @@ def test_sources_list():
 	])
 	assert_equal(
 		srcs,
-		c.extra_sources('debian', 'testing', 'amd64').intersection(srcs))
+		c.extra_sources('debian', 'testing', 'amd64') & srcs)
 
 	srcs = set([
 		'deb http://1234 all',
@@ -97,7 +97,7 @@ def test_sources_list():
 	])
 	assert_equal(
 		srcs,
-		c.extra_sources('debian', 'future release', 'amd64').intersection(srcs))
+		c.extra_sources('debian', 'future release', 'amd64') & srcs)
 
 	srcs = set([
 		'deb http://1234 all',
@@ -105,7 +105,7 @@ def test_sources_list():
 	])
 	assert_equal(
 		srcs,
-		c.extra_sources('debian', 'future release', 'i386').intersection(srcs))
+		c.extra_sources('debian', 'future release', 'i386') & srcs)
 
 def test_packages():
 	c = cfg.Cfg()
@@ -149,7 +149,7 @@ def test_climb_sources_list():
 
 	assert_equal(
 		srcs,
-		c.extra_sources('debian', 'testing', 'amd64').intersection(srcs))
+		c.extra_sources('debian', 'testing', 'amd64') & srcs)
 
 def test_climb():
 	c = cfg.Cfg(base=util.fixture('debsrc/subdir'))

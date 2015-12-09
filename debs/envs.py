@@ -79,17 +79,25 @@ def components(release, sep=' '):
 
 	raise UnknownRelease(release)
 
+def dist(release):
+	for dist, specs in _COMPONENTS.items():
+		if release in specs[0]:
+			return dist
+
+	raise UnknownRelease(release)
+
 def sources(release, arch, cfg=None):
 	main = main_mirror(release, cfg=cfg)
 	comps = components(release)
+	d = dist(release)
 
 	srcs = set([
 		'deb {} {} {}'.format(main, release, comps).strip(),
 		'deb-src {} {} {}'.format(main, release, comps).strip(),
 	])
 
-	if cfg and cfg.extra_sources(release, release, arch):
-		srcs |= cfg.extra_sources(release, release, arch)
+	if cfg and cfg.extra_sources(d, release, arch):
+		srcs |= cfg.extra_sources(d, release, arch)
 
 	return '\n'.join(sorted(srcs)) + '\n'
 

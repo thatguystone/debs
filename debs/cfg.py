@@ -32,7 +32,7 @@ PROPS = [
 	},
 	{
 		'name': 'packages',
-		'type': set,
+		'type': util.OrderedSet,
 		'group': GROUP,
 		'default': '.',
 	},
@@ -50,13 +50,13 @@ PROPS = [
 	},
 	{
 		'name': 'envs',
-		'type': set,
+		'type': util.OrderedSet,
 		'group': GROUP,
 		'default': 'all',
 	},
 	{
 		'name': 'remotes',
-		'type': set,
+		'type': util.OrderedSet,
 		'group': GROUP,
 		'default': 'default',
 	},
@@ -240,10 +240,10 @@ class Cfg(object):
 			self._get_all(PACKAGES, '{}-{}'.format(release, arch), fallback=None),
 		]
 
-		pkgs = set()
+		pkgs = util.OrderedSet()
 		for v in vs:
 			for p in v:
-				pkgs.update(util.to_set(p.split(',')))
+				pkgs |= util.to_set(p.split(','))
 
 		return pkgs
 
@@ -262,7 +262,7 @@ def _gsetter(p):
 			fn = self.c.getint
 		elif t is bool:
 			fn = self.c.getboolean
-		elif t is set:
+		elif t is util.OrderedSet:
 			def split(g, n, fallback=None):
 				v = self.c.get(g, n, fallback=fallback)
 				return util.to_set(v.split(','))
