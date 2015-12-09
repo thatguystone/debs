@@ -234,14 +234,17 @@ def _check_upgrade(cfg, lastmod, release, arch):
 	now = time.time()
 	age = now - lastmod
 
-	if age > cfg.refresh_after:
-		log.info('%s-%s out of date; upgrading...', release, arch)
+	if age < cfg.refresh_after:
+		return False
 
-		run.check(
-			'sudo',
-			'sbuild-update',
-			'-udcar',
-			_schroot_name(release, arch))
+	log.info('%s-%s out of date; upgrading...', release, arch)
+	run.check(
+		'sudo',
+		'sbuild-update',
+		'-udcar',
+		_schroot_name(release, arch))
+
+	return True
 
 def _update(release, arch):
 	run.check(
