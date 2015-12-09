@@ -152,7 +152,8 @@ class Cfg(object):
 
 	def _clear_path_local(self):
 		for do in DIR_ONLY:
-			self.c.remove_option(do[0], do[1])
+			if do[0] in self.c:
+				self.c.remove_option(do[0], do[1])
 
 	def _get_all(self, group, key, fallback=None):
 		res = []
