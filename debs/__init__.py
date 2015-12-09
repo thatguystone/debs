@@ -93,6 +93,7 @@ class Debs(object):
 				ok = True
 				if remotes:
 					self.versions[self._version_key(pkg, env)] = pkg.version
+					self._save_versions()
 			except Exception as e:
 				if not self._confirm('Build failed. Retry?',
 					exit=False,
@@ -150,8 +151,6 @@ class Debs(object):
 		for pkg in self.pkgs:
 			for env in self.get_envs(cfg=pkg.cfg):
 				self._try_build(pkg, env)
-
-		self._save_versions()
 
 	def delete(self):
 		envs = self.get_envs(cfg=self.cfg, only_installed=True)
