@@ -40,8 +40,6 @@ Depends:
 	sbuild,
 	schroot,
 	sudo,
-Recommends:
-	bash-completion
 Description: Python library interface for debs
 	Provides the library that backs the debs executable. Debs is a program for
 	automating building a bunch of .debs locally. It tries to automate as much
