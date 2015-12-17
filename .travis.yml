@@ -1,7 +1,7 @@
 language: python
-
+install:
 python:
   - "3.4"
   - "3.5"
 
-script: nosetests3
+script: nosetests
