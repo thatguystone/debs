@@ -1,7 +1,12 @@
 language: python
-install:
 python:
   - "3.4"
   - "3.5"
+
+sudo: true
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -y sudo dput quilt schroot
+install:
 
 script: nosetests
