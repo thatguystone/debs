@@ -77,9 +77,11 @@ def _check_user_in_group():
 	u = getpass.getuser()
 	if u != 'root' and u not in grp.getgrnam('sbuild').gr_mem:
 		log.error('Current user (%s) not in sbuild group. Adding...', u)
-		run.check('sudo', 'sbuild-adduser', u)
+		run.check('sudo', 'adduser', u, 'sbuild')
 		log.error('You need to log out and log back in before you can use sbuild.')
-		sys.exit(1)
+
+		if not os.getenv('CI'):
+			sys.exit(1)
 
 def _dir(release, arch):
 	return '/var/lib/debs/{}-{}'.format(release, arch)
