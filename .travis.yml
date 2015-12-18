@@ -8,4 +8,8 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -y debhelper dput quilt sbuild schroot sudo
 
-script: nosetests -v
+script:
+  - nosetests --version
+  - nosetests --plugins
+  - pip freeze
+  - nosetests -v
