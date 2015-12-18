@@ -12,4 +12,4 @@ script:
   - nosetests --version
   - nosetests --plugins
   - pip freeze
-  - nosetests -v
+  - nosetests -v --nocapture --nologcapture
