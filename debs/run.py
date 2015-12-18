@@ -11,6 +11,8 @@ def _to_bytes(obj):
 	return obj
 
 def _to_str(b):
+	if not b:
+		return ''
 	return b.decode('utf-8').strip()
 
 def get(*args):

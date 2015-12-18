@@ -40,7 +40,7 @@ def test_get_envs_filter():
 def test_get_remotes():
 	d = Debs()
 
-	rl = d.get_remotes()
+	rl = d.get_remotes('all')
 	assert_not_equal([], rl)
 
 def test_build():

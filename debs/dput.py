@@ -1,12 +1,15 @@
 from . import run
 
 def match(*names):
-	hosts = run.get('dput', '--host-list').split('\n')[1:]
-	hosts = filter(None, hosts)
-
 	remotes = set()
-	for h in hosts:
+
+	lines = run.get('dput', '--host-list').split('\n')
+	lines = filter(None, lines)
+	for h in lines:
 		parts = h.split(' => ')
+		if len(parts) != 2:
+			continue
+
 		name = parts[0]
 		url = parts[1].split()[0]
 
