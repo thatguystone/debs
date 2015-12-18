@@ -90,7 +90,7 @@ class _Native(_Pkg):
 
 	def gen_src(self, tmpdir):
 		run.check('debian/rules', 'clean', cwd=self.path)
-		run.check('dpkg-source', '--build', self.path, cwd=tmpdir)
+		run.check('dpkg-source', '-b', self.path, cwd=tmpdir)
 		return glob.glob('{}/*.dsc'.format(tmpdir))[0]
 
 class _Quilt(_Native):

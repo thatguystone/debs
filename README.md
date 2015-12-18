@@ -1,4 +1,4 @@
-# debs
+# debs [![Build Status](https://travis-ci.org/thatguystone/debs.svg)](https://travis-ci.org/thatguystone/debs)
 
 For building your .debs.
 
