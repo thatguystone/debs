@@ -13,6 +13,7 @@ Build-Depends:
 	libxml2-utils,
 	python-all,
 	python3-all,
+	python3-debian,
 	python3-setuptools,
 	xmlto,
 
@@ -35,6 +36,7 @@ Depends:
 	${misc:Depends},
 	${python3:Depends},
 	dput,
+	python3-debian,
 	quilt,
 	sbuild,
 	schroot,

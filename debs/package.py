@@ -2,12 +2,11 @@ import abc
 import glob
 import logging
 import os.path
-import re
 import shutil
 
-from . import run
+import debian.changelog
 
-CHANGELOG_VERSION = re.compile(r'.* \((.*)\) .*; urgency=')
+from . import run
 
 log = logging.getLogger(__name__)
 
@@ -77,16 +76,18 @@ class _Native(_Pkg):
 		self._load_changelog()
 
 	def _load_changelog(self):
+		self.chglog = debian.changelog.Changelog()
+
 		cl = os.path.join(self.path, 'debian', 'changelog')
-
 		with open(cl) as f:
-			m = CHANGELOG_VERSION.match(f.read())
+			try:
+				self.chglog.parse_changelog(f, max_blocks=1)
+			except debian.changelog.ChangelogParseError as e:
+				raise InvalidPackage(self.path, e)
 
-		if not m:
-			raise InvalidPackage(self.path,
-				'could not find version in changelog')
-
-		self.version = m.group(1)
+	@property
+	def version(self):
+		return self.chglog.full_version
 
 	def gen_src(self, tmpdir):
 		run.check('debian/rules', 'clean', cwd=self.path)
@@ -99,10 +100,9 @@ class _Quilt(_Native):
 	def gen_src(self, tmpdir):
 		self._clean()
 
-		# Upstream version: debian versions are 1.2.3-DEB_REV, so remove
-		# DEB_REV to get the upstream version
-		upv = self.version.split('-')[0]
-		tar = '{}_{}.orig.tar.xz'.format(self.name, upv)
+		tar = '{}_{}.orig.tar.xz'.format(
+			self.name,
+			self.chglog.upstream_version)
 
 		run.check('tar',
 			'cfJ', tar,
