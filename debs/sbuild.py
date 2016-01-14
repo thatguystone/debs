@@ -168,7 +168,7 @@ def _reconfig_mirrors(release, arch, cfg, dir):
 	srcs = os.path.join(dir, 'etc', 'apt', 'sources.list')
 
 	if not _check_file_is(srcs, envs.sources(release, arch, cfg=cfg)):
-		_update(release, arch)
+		_upgrade(release, arch)
 
 def _check_file_has(path, pfx, rest, ignore_missing=False):
 	if ignore_missing and not os.path.exists(path):
@@ -241,19 +241,15 @@ def _check_upgrade(cfg, lastmod, release, arch):
 		return False
 
 	log.info('%s-%s out of date; upgrading...', release, arch)
+	_upgrade(release, arch)
+
+	return True
+
+def _upgrade(release, arch):
 	run.check(
 		'sudo',
 		'sbuild-update',
 		'-udcar',
-		_schroot_name(release, arch))
-
-	return True
-
-def _update(release, arch):
-	run.check(
-		'sudo',
-		'sbuild-update',
-		'-u',
 		_schroot_name(release, arch))
 
 def _make_sbuildrc(cfg, path):
