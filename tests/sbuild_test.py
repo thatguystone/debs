@@ -10,9 +10,6 @@ _ENVS = [
 	'{}-amd64'.format(envs._DEBIAN[1]),
 ]
 
-# def setup():
-# 	sbuild.ensure(cfg.Cfg(), *_ENVS)
-
 def test_match():
 	assert_greater(len(sbuild.match('amd64', 'blah')), 0)
 	assert_greater(len(sbuild.match('blah', 'i386')), 0)
