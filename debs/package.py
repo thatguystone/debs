@@ -100,10 +100,14 @@ class _Quilt(_Native):
 		# Upstream version: debian versions are 1.2.3-DEB_REV, so remove
 		# DEB_REV to get the upstream version
 		upv = self.version.split('-')[0]
-
 		tar = '{}_{}.orig.tar.xz'.format(self.name, upv)
-		run.check('tar', 'cfJ', tar, '-C', self.path, '.', cwd=tmpdir)
-		super().gen_src(tmpdir)
+
+		run.check('tar', 'cfJ', tar,
+			'-C', self.path,
+			'.',
+			cwd=tmpdir)
+
+		return super().gen_src(tmpdir)
 
 	def _clean(self):
 		# The actual source is sometimes modified by patches. Just remove
