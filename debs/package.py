@@ -104,7 +104,9 @@ class _Quilt(_Native):
 		upv = self.version.split('-')[0]
 		tar = '{}_{}.orig.tar.xz'.format(self.name, upv)
 
-		run.check('tar', 'cfJ', tar,
+		run.check('tar',
+			'cfJ', tar,
+			'--force-local', # for when versions have a colon in them
 			'-C', self.path,
 			'.',
 			cwd=tmpdir)
