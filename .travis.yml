@@ -6,6 +6,13 @@ python:
 sudo: required
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y debhelper dput quilt sbuild schroot sudo
+  - sudo apt-get install -y
+      debhelper
+      dput
+      python3-debian
+      quilt
+      sbuild
+      schroot
+      sudo
 
 script: nosetests
