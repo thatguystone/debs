@@ -134,8 +134,8 @@ class _Dsc(_Pkg):
 		self.name = self._get_key('Source', self.path)
 		self.version = self._get_key('Version', self.path)
 
-	def gen_src(self, tmpdir):
-		pass
+	def gen_src(self, tmpdir=None):
+		return self.path
 
 class InvalidPackage(Exception):
 	def __init__(self, pkg, msg):

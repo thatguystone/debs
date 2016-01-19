@@ -18,9 +18,11 @@ def test_load():
 	assert_equal(p.name, 'quilt')
 	assert_equal(p.version, '3.2.1-1')
 
-	p = package.load(util.fixture('pkgs', 'native-dsc', 'native_1.2.3.dsc'), c)
+	dsc_path = util.fixture('pkgs', 'native-dsc', 'native_1.2.3.dsc')
+	p = package.load(dsc_path, c)
 	assert_equal(p.name, 'native')
 	assert_equal(p.version, '1.2.3')
+	assert_equal(p.gen_src(), dsc_path)
 
 @raises(package.InvalidPackage)
 def test_no_format():
