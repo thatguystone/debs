@@ -5,6 +5,7 @@ import os.path
 import shutil
 
 import debian.changelog
+import debian.deb822
 
 from . import run
 
@@ -134,7 +135,16 @@ class _Dsc(_Pkg):
 		self.name = self._get_key('Source', self.path)
 		self.version = self._get_key('Version', self.path)
 
-	def gen_src(self, tmpdir=None):
+	def gen_src(self, tmpdir):
+		with open(self.path) as f:
+			dsc = debian.deb822.Dsc(f)
+			files = dsc.get('Files', [])
+
+		srcdir = os.path.dirname(self.path)
+		for f in files:
+			src = os.path.join(srcdir, f['name'])
+			shutil.copy(src, tmpdir)
+
 		return self.path
 
 class InvalidPackage(Exception):
