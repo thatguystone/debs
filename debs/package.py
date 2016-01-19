@@ -52,17 +52,6 @@ class _Pkg(abc.ABC):
 		self.path = path
 		self.cfg = cfg.in_path(self.path)
 
-	def _get_key(self, key, path):
-		if not os.path.isfile(path):
-			raise InvalidPackage(self.path, 'missing {}'.format(path))
-
-		key = '{}: '.format(key.strip())
-		with open(path) as f:
-			for l in f:
-				l = l.strip()
-				if key in l:
-					return l.split(':')[1].strip()
-
 	@abc.abstractmethod
 	def gen_src(self, tmpdir):
 		pass
@@ -71,9 +60,14 @@ class _Native(_Pkg):
 	def __init__(self, path, cfg):
 		super().__init__(path, cfg)
 
-		self.name = self._get_key(
-			'Source',
-			os.path.join(self.path, 'debian', 'control'))
+		ctrl = os.path.join(self.path, 'debian', 'control')
+		if not os.path.isfile(ctrl):
+			raise InvalidPackage(self.path, 'missing {}'.format(ctrl))
+
+		with open(ctrl) as f:
+			cf = debian.deb822.Deb822(f)
+			self.name = cf['Source']
+
 		self._load_changelog()
 
 	def _load_changelog(self):
@@ -132,16 +126,17 @@ class _Quilt(_Native):
 class _Dsc(_Pkg):
 	def __init__(self, path, cfg):
 		super().__init__(path, cfg)
-		self.name = self._get_key('Source', self.path)
-		self.version = self._get_key('Version', self.path)
 
-	def gen_src(self, tmpdir):
 		with open(self.path) as f:
 			dsc = debian.deb822.Dsc(f)
-			files = dsc.get('Files', [])
 
+			self.name = dsc['Source']
+			self.version = dsc['Version']
+			self.files = dsc.get('Files', [])
+
+	def gen_src(self, tmpdir):
 		srcdir = os.path.dirname(self.path)
-		for f in files:
+		for f in self.files:
 			src = os.path.join(srcdir, f['name'])
 			shutil.copy(src, tmpdir)
 
