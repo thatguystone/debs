@@ -39,6 +39,9 @@ All lists are comma-separated.
 		Which packages (directories, dscs) to build by default. This is
 		superseded by packages provided on the command line.
 
+		When loading packages recursively, this expands relative to the
+		directory that the `.debsrc` it was loaded from lives in.
+
 	*prompt-rebuild* = true;;
 
 		If you want to be prompted to run sbuild again if it fails.

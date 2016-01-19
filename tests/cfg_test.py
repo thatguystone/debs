@@ -1,5 +1,6 @@
 import multiprocessing
 from nose.tools import *
+import os.path
 
 from debs import cfg
 
@@ -162,12 +163,28 @@ def test_in_path():
 	nc = c.in_path(util.fixture('debsrc/another'))
 	assert_equal(123, nc.jobs)
 
-	assert_not_equal(c.c, nc.c)
-	assert_not_equal(c.cs, nc.cs)
-	assert_not_equal(c.loaded, nc.loaded)
+	assert_not_equal(c._c, nc._c)
+	assert_not_equal(c._cs, nc._cs)
+	assert_not_equal(c._loaded, nc._loaded)
 
 def test_override():
 	c = cfg.Cfg()
 
 	c.lintian_args = '-m -j -k'
 	assert_equal(['-m', '-j', '-k'], c.lintian_args)
+
+def test_all_pkgs():
+	c = cfg.Cfg(base=util.fixture('debsrc-pkgs/'))
+
+	pkgs = []
+	for pc, pkg in c.all_pkgs():
+		pkgs.append(os.path.relpath(pkg))
+
+	exp = [
+		'tests/fixtures/debsrc-pkgs/pkg0',
+		'tests/fixtures/debsrc-pkgs/subs/deeper/quilt0',
+		'tests/fixtures/debsrc-pkgs/subs/deeper/quilt1',
+		'tests/fixtures/debsrc-pkgs/subs/dsc/test.dsc',
+		'tests/fixtures/debsrc-pkgs/subs/native',
+	]
+	assert_equal(exp, pkgs)

@@ -29,13 +29,9 @@ class Debs(object):
 
 		self._load_versions()
 
-		epkgs = []
-		for pkg in self.cfg.packages:
-			epkgs += util.expand(pkg)
-
 		self.pkgs = []
-		for epkg in epkgs:
-			self.pkgs.append(package.load(epkg, self.cfg))
+		for pcfg, pkg in self.cfg.all_pkgs():
+			self.pkgs.append(package.load(pkg, pcfg))
 
 	def _load_versions(self):
 		self.versions = {}

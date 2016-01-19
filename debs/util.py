@@ -1,5 +1,7 @@
 import collections
+import contextlib
 import glob
+import os
 import os.path
 
 class OrderedSet(collections.MutableSet):
@@ -59,12 +61,19 @@ class OrderedSet(collections.MutableSet):
 			return len(self) == len(other) and list(self) == list(other)
 		return set(self) == set(other)
 
+@contextlib.contextmanager
+def push_dir(dir):
+	prev = os.getcwd()
+	os.chdir(dir)
+	yield
+	os.chdir(prev)
+
 def expand(path):
 	ps = glob.glob(path)
 	if not ps:
 		ps = [path]
 
-	return list(map(lambda p: os.path.expanduser(p), ps))
+	return list(map(lambda p: os.path.abspath(os.path.expanduser(p)), ps))
 
 def to_set(strl):
 	return OrderedSet(filter(None, map(lambda s: s.strip(), strl)))

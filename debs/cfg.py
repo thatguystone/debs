@@ -8,6 +8,7 @@ import shlex
 
 from . import util
 
+DEBSRC = '.debsrc'
 DEFAULTS = [
 	'/etc/debsrc',
 	'~/.debs/debsrc',
@@ -121,9 +122,10 @@ PROPS = [
 
 class Cfg(object):
 	def __init__(self, base=os.getcwd(), load=True):
-		self.c = configparser.ConfigParser()
-		self.cs = []
-		self.loaded = set()
+		self._c = configparser.ConfigParser()
+		self._base = os.path.abspath(base)
+		self._cs = []
+		self._loaded = set()
 		self._overrides = {}
 
 		if not load:
@@ -132,14 +134,14 @@ class Cfg(object):
 		for f in DEFAULTS:
 			self.load(f)
 
-		self._load_tree(base)
+		self._load()
 
-	def _load_tree(self, base):
+	def _load(self):
 		paths = []
-		top = os.path.abspath(base)
+		top = self._base
 		curr = top
 		while len(curr) > 1:
-			paths.insert(0, os.path.join(curr, '.debsrc'))
+			paths.insert(0, os.path.join(curr, DEBSRC))
 			curr = os.path.dirname(curr)
 
 		if os.path.isfile(top):
@@ -152,12 +154,12 @@ class Cfg(object):
 
 	def _clear_path_local(self):
 		for do in DIR_ONLY:
-			if do[0] in self.c:
-				self.c.remove_option(do[0], do[1])
+			if do[0] in self._c:
+				self._c.remove_option(do[0], do[1])
 
 	def _get_all(self, group, key, fallback=None):
 		res = []
-		for c in self.cs:
+		for c in self._cs:
 			v = c.get(group, key, fallback=fallback)
 			if v:
 				res.append(v)
@@ -170,42 +172,42 @@ class Cfg(object):
 		given path and its parents.
 		"""
 
-		cfg = Cfg(load=False)
-		cfg.cs = copy.copy(self.cs)
-		cfg.loaded = copy.copy(self.loaded)
+		cfg = Cfg(base=path, load=False)
+		cfg._cs = copy.copy(self._cs)
+		cfg._loaded = copy.copy(self._loaded)
 		cfg._overrides = self._overrides
 
 		f = io.StringIO()
-		self.c.write(f)
+		self._c.write(f)
 		cfg.load_string(f.getvalue())
 
-		cfg._load_tree(path)
+		cfg._load()
 
 		return cfg
 
 	def load(self, f):
 		f = util.expand(f)[0]
-		if not os.path.exists(f) or f in self.loaded:
+		if not os.path.exists(f) or f in self._loaded:
 			return
 
-		self.loaded.add(f)
-		self.c.read(f)
+		self._loaded.add(f)
+		self._c.read(f)
 
 		c = configparser.ConfigParser()
 		c.read(f)
-		self.cs.append(c)
+		self._cs.append(c)
 
 	def load_string(self, str):
-		self.c.read_string(str)
+		self._c.read_string(str)
 
 		c = configparser.ConfigParser()
 		c.read_string(str)
-		self.cs.append(c)
+		self._cs.append(c)
 
 	def main_mirror(self, dist, release):
-		v = self.c.get(REPOS, release, fallback=None)
+		v = self._c.get(REPOS, release, fallback=None)
 		if not v:
-			v = self.c.get(REPOS, dist, fallback=None)
+			v = self._c.get(REPOS, dist, fallback=None)
 
 		return v
 
@@ -248,6 +250,20 @@ class Cfg(object):
 
 		return pkgs
 
+	def all_pkgs(self):
+		pkgs = set()
+
+		# `packages` expects to expand in directory that file lives in
+		with util.push_dir(self._base):
+			for pkg in self.packages:
+				for p in util.expand(pkg):
+					if p != self._base and os.path.exists(os.path.join(p, DEBSRC)):
+						pkgs |= set(self.in_path(p).all_pkgs())
+					else:
+						pkgs.add((self.in_path(p), p))
+
+		return sorted(pkgs, key=lambda c: c[1])
+
 def _gsetter(p):
 	def getter(self):
 		if p['name'] in self._overrides:
@@ -258,14 +274,14 @@ def _gsetter(p):
 
 		t = p.get('type', None)
 
-		fn = self.c.get
+		fn = self._c.get
 		if t is int:
-			fn = self.c.getint
+			fn = self._c.getint
 		elif t is bool:
-			fn = self.c.getboolean
+			fn = self._c.getboolean
 		elif t is util.OrderedSet:
 			def split(g, n, fallback=None):
-				v = self.c.get(g, n, fallback=fallback)
+				v = self._c.get(g, n, fallback=fallback)
 				return util.to_set(v.split(','))
 			fn = split
 
