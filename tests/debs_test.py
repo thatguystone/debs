@@ -48,3 +48,9 @@ def test_build():
 		pkgs=[util.fixture('pkgs', 'native')],
 		envs=[envs.ENVS[0]])
 	d.build()
+
+def test_build_subdir_dsc():
+	d = _Debs(
+		pkgs=[util.fixture('debsrc-pkgs', 'subs', 'dsc')],
+		envs=[envs.ENVS[0]])
+	d.build()

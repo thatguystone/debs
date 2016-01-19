@@ -36,6 +36,7 @@ PROPS = [
 		'type': util.OrderedSet,
 		'group': GROUP,
 		'default': '.',
+		'dont_inherit': True,
 	},
 	{
 		'name': 'no-versions',
@@ -175,7 +176,11 @@ class Cfg(object):
 		cfg = Cfg(base=path, load=False)
 		cfg._cs = copy.copy(self._cs)
 		cfg._loaded = copy.copy(self._loaded)
-		cfg._overrides = self._overrides
+		cfg._overrides = copy.copy(self._overrides)
+
+		for p in PROPS:
+			if p.get('dont_inherit', False):
+				cfg._overrides.pop(p['name'], None)
 
 		f = io.StringIO()
 		self._c.write(f)

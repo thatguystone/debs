@@ -1,2 +1,5 @@
 [debs]
 packages = *
+
+[sbuild]
+dry-run = true
