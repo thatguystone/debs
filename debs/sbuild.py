@@ -5,9 +5,7 @@ import logging
 import os
 import os.path
 import pickle
-import shutil
 import sys
-import tempfile
 import time
 
 from . import envs, dput, run, util
@@ -349,9 +347,8 @@ def build(pkg, env, remotes=[]):
 
 	release, arch = envs.split(env)
 
-	tmpdir = tempfile.mkdtemp(prefix='debs-')
-	sbuildrc = os.path.join(tmpdir, '.sbuildrc')
-	try:
+	with util.tmpdir() as tmpdir:
+		sbuildrc = os.path.join(tmpdir, '.sbuildrc')
 		dsc = pkg.gen_src(tmpdir)
 		_make_sbuildrc(cfg, sbuildrc)
 
@@ -390,8 +387,6 @@ def build(pkg, env, remotes=[]):
 		chgs = glob.glob(os.path.join(tmpdir, '*.changes'))[0]
 		for r in remotes:
 			dput.put(r, chgs)
-	finally:
-		shutil.rmtree(tmpdir, ignore_errors=True)
 
 class SbuildException(Exception):
 	pass

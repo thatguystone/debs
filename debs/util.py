@@ -3,6 +3,8 @@ import contextlib
 import glob
 import os
 import os.path
+import shutil
+import tempfile
 
 class OrderedSet(collections.MutableSet):
 	def __init__(self, iterable=None):
@@ -60,6 +62,12 @@ class OrderedSet(collections.MutableSet):
 		if isinstance(other, OrderedSet):
 			return len(self) == len(other) and list(self) == list(other)
 		return set(self) == set(other)
+
+@contextlib.contextmanager
+def tmpdir():
+	tmpdir = tempfile.mkdtemp(prefix='debs-')
+	yield tmpdir
+	shutil.rmtree(tmpdir, ignore_errors=True)
 
 @contextlib.contextmanager
 def push_dir(dir):
