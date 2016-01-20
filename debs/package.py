@@ -140,7 +140,7 @@ class _Dsc(_Pkg):
 			src = os.path.join(srcdir, f['name'])
 			shutil.copy(src, tmpdir)
 
-		return self.path
+		return shutil.copy(self.path, tmpdir)
 
 class InvalidPackage(Exception):
 	def __init__(self, pkg, msg):
