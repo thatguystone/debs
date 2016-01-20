@@ -1,4 +1,5 @@
 from nose.tools import *
+import os.path
 
 from debs import cfg, package
 from . import util
@@ -23,7 +24,9 @@ def test_load():
 		p = package.load(dsc_path, c)
 		assert_equal(p.name, 'native')
 		assert_equal(p.version, '1.2.3')
-		assert_equal(p.gen_src(tmpdir), dsc_path)
+		assert_equal(
+			p.gen_src(tmpdir),
+			os.path.join(tmpdir, 'native_1.2.3.dsc'))
 
 @raises(package.InvalidPackage)
 def test_no_format():
