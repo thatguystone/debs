@@ -373,7 +373,7 @@ def build(pkg, env, remotes=[]):
 		]
 
 		if cfg.include_src:
-			args.append('--source')
+			args += ['--source', '--force-orig-source']
 
 		args.append(dsc)
 
