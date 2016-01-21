@@ -328,6 +328,7 @@ def ensure(cfg, *envss):
 	inst = installed()
 	for env in envss:
 		release, arch = envs.split(env)
+		env = '-'.join((release, arch))
 
 		if env in inst:
 			_reconfig(cfg, release, arch)

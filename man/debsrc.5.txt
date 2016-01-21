@@ -22,192 +22,204 @@ All lists are comma-separated.
 
 *[debs]*::
 
-	*envs* = [all];;
+    *envs* = [all];;
 
-		Only build for these environments. This can be specified on a per-
+        Only build for these environments. This can be specified on a per-
         package basis, and it overrides the parent's config. Options from
         the command line always override this.
 
-	*remotes* = [all];;
+        If given multiple times, multiple environments will be used.
+        Environments are matched based on prefix/suffix. For example, if given
+        "stretch-", this will match "stretch- amd64" and "stretch-i386". If
+        given "-amd64", all known "amd64" environments are matched.
 
-		Which remotes to upload to. This can be specified on a per-package
-		basis, and it overrides the parent's config. Options from the command
-		line always override this.
+        The value "all" may be given to select all known environments.
 
-	*packages* = [.];;
+        A few aliases exist for convenience: debian-stable, debian-testing,
+        debian-unstable, ubuntu-latest, ubuntu-lts. These may be used in any
+        env spec, and they will be expanded to the current release (ie.
+        debian-stable => jessie).
 
-		Which packages (directories, dscs) to build by default. This is
-		superseded by packages provided on the command line.
+    *remotes* = [all];;
 
-		When loading packages recursively, this expands relative to the
-		directory that the `.debsrc` it was loaded from lives in.
+        Which remotes to upload to. This can be specified on a per-package
+        basis, and it overrides the parent's config. Options from the command
+        line always override this.
 
-	*prompt-rebuild* = true;;
+    *packages* = [.];;
 
-		If you want to be prompted to run sbuild again if it fails.
+        Which packages (directories, dscs) to build by default. This is
+        superseded by packages provided on the command line.
 
-	*refresh-after* = 604800;;
+        When loading packages recursively, this expands relative to the
+        directory that the `.debsrc` it was loaded from lives in.
 
-		How long to go before upgrading sbuild env (in seconds).
+    *prompt-rebuild* = true;;
 
-	*batch* = false;;
+        If you want to be prompted to run sbuild again if it fails.
 
-		Assume the answer to any question is "yes"
+    *refresh-after* = 604800;;
 
-	*no-versions* = false;;
+        How long to go before upgrading sbuild env (in seconds).
 
-		Don't remember built versions. Always try to build everything.
+    *batch* = false;;
+
+        Assume the answer to any question is "yes"
+
+    *no-versions* = false;;
+
+        Don't remember built versions. Always try to build everything.
 
 *[packages]*::
 
-	Sometimes it's useful to include extra packages in every schroot
-	environment. These packages are not part of any particular build, but
-	they're typically used (lintian, build-essential, etc), and installing
-	them everything time is wasteful.
+    Sometimes it's useful to include extra packages in every schroot
+    environment. These packages are not part of any particular build, but
+    they're typically used (lintian, build-essential, etc), and installing
+    them everything time is wasteful.
 
-	*all* = [LIST];;
+    *all* = [LIST];;
 
-		Packages to install in every schroot
+        Packages to install in every schroot
 
-	*debian* = [LIST];;
+    *debian* = [LIST];;
 
-		Packages to install only in debian environments
+        Packages to install only in debian environments
 
-	*ubuntu* = [LIST];;
+    *ubuntu* = [LIST];;
 
-		Packages to install only in ubuntu environments
+        Packages to install only in ubuntu environments
 
-	*<release>* = [LIST], *<release>-<arch>* = [LIST];;
+    *<release>* = [LIST], *<release>-<arch>* = [LIST];;
 
-		Packages to install only in environments of the given release that run
-		the given architecture. For example, this may be "jessie" or "jessie-
-		amd64".
+        Packages to install only in environments of the given release that run
+        the given architecture. For example, this may be "jessie" or "jessie-
+        amd64".
 
-	*<distro>* = [LIST], *<distro>-<arch>* = [LIST];;
+    *<distro>* = [LIST], *<distro>-<arch>* = [LIST];;
 
-		Packages to install only in environments of the given distro that run
-		the given architecture. For example, this may be "debian" or "debian-
-		amd64".
+        Packages to install only in environments of the given distro that run
+        the given architecture. For example, this may be "debian" or "debian-
+        amd64".
 
 *[repos]*::
 
-	Sometimes you want to have your environments configured with a different
-	default mirror or with extra sources lines. Got you covered.
-	;;
-	The following variables are expanded in this section, depeneding on the
-	environment they're being used in:
+    Sometimes you want to have your environments configured with a different
+    default mirror or with extra sources lines. Got you covered.
+    ;;
+    The following variables are expanded in this section, depeneding on the
+    environment they're being used in:
 
-		{DIST}     debian, ubuntu, etc
-		{RELEASE}  jessie, stretch, wily, utopic, etc
+        {DIST}     debian, ubuntu, etc
+        {RELEASE}  jessie, stretch, wily, utopic, etc
 
-	*debian* = http://httpredir.debian.org/debian;;
+    *debian* = http://httpredir.debian.org/debian;;
 
-		Change debian's default apt mirror
+        Change debian's default apt mirror
 
-	*ubuntu* = http://us.archive.ubuntu.com/ubuntu/;;
+    *ubuntu* = http://us.archive.ubuntu.com/ubuntu/;;
 
-		Change ubuntu's default apt mirror
+        Change ubuntu's default apt mirror
 
-	*extra-all* = TEXT;;
+    *extra-all* = TEXT;;
 
-		Add this block to the sources.list file in every environment.
+        Add this block to the sources.list file in every environment.
 
-	*extra-<distro/;;release>-<arch>* = TEXT
+    *extra-<distro/;;release>-<arch>* = TEXT
 
-		Add this block to the sources.list file in the environment matched by
-		the given spec.
+        Add this block to the sources.list file in the environment matched by
+        the given spec.
 
-		These keys take the form of, for example;;
+        These keys take the form of, for example;;
 
-			extra-debian = http://some/repo extra-debian-amd64 =
-			http://another/repo
+            extra-debian = http://some/repo extra-debian-amd64 =
+            http://another/repo
 
 
 *[sbuild]*::
 
-	*jobs* = <cpu count>;;
+    *jobs* = <cpu count>;;
 
-		How mnay jobs to tell sbuild to run the build with.
+        How mnay jobs to tell sbuild to run the build with.
 
-	*key* =;;
+    *key* =;;
 
-		Which GPG key to use to sign the generated package
+        Which GPG key to use to sign the generated package
 
-	*user* = <current user>;;
+    *user* = <current user>;;
 
-		Which user to run the build as
+        Which user to run the build as
 
-	*user-keep-env* = false;;
+    *user-keep-env* = false;;
 
-		When running the build as a different user, should the environment of
-		the original user be preserved (ie. `sudo -E` vs plain `sudo`)?
+        When running the build as a different user, should the environment of
+        the original user be preserved (ie. `sudo -E` vs plain `sudo`)?
 
-	*lintian* = true;;
+    *lintian* = true;;
 
-		Should lintian run?
+        Should lintian run?
 
-	*lintian-args* = -i -I;;
+    *lintian-args* = -i -I;;
 
-		Arguments to pass to lintian. Parsed with shlex.
+        Arguments to pass to lintian. Parsed with shlex.
 
-	*apt-upgrade* = true;;
+    *apt-upgrade* = true;;
 
-		If apt sources should be updated before the build. You probably don't
-		want to disable this.
+        If apt sources should be updated before the build. You probably don't
+        want to disable this.
 
 EXAMPLE CONFIG
 --------------
-	[debs]
+    [debs]
 
-	# Build for anything jessie and for everything with architecture i386
-	envs = jessie-, -i386
+    # Build for anything jessie and for everything with architecture i386
+    envs = jessie-, -i386
 
-	# Push to the remotes named "public" and "private"
-	remotes = public, private
+    # Push to the remotes named "public" and "private"
+    remotes = public, private
 
-	# Assuming the following structure:
-	#    ~/debs
-	#          .debsrc (this file)
-	#          pkg0
-	#          pkg1
-	#          pkg2
-	#
-	# pkg0, pkg1, and pkg2 will be built
-	packages = *
+    # Assuming the following structure:
+    #    ~/debs
+    #          .debsrc (this file)
+    #          pkg0
+    #          pkg1
+    #          pkg2
+    #
+    # pkg0, pkg1, and pkg2 will be built
+    packages = *
 
-	[packages]
+    [packages]
 
-	all = python3-all
+    all = python3-all
 
-	# These packages are only used as examples and don't actually exist
-	debian = debian-specific-package
-	debian-i386 = nvidia-cuda-i386-stuff
-	jessie-amd64 = jessie-amd64-specific-package
-	ubuntu = ubuntu-specific-package
+    # These packages are only used as examples and don't actually exist
+    debian = debian-specific-package
+    debian-i386 = nvidia-cuda-i386-stuff
+    jessie-amd64 = jessie-amd64-specific-package
+    ubuntu = ubuntu-specific-package
 
-	[repos]
-	# Values are entries that would go in a typical sources.list file. For
-	# example:
-	#
-	# extra-some-spec =
-	#	deb http://example/debian/ repo component1
-	#	deb http://example/debian/ repo component2
-	#	deb http://example/debian/ repo component3
-	#   deb http://example/debian/ {RELEASE}/
-	#
-	# The following variables may be in the strings, and they will be substitued
-	# accordingly:
-	#
-	#     {DIST}     debian, ubuntu, etc
-	#     {RELEASE}  jessie, stretch, wily, utopic, etc
+    [repos]
+    # Values are entries that would go in a typical sources.list file. For
+    # example:
+    #
+    # extra-some-spec =
+    #   deb http://example/debian/ repo component1
+    #   deb http://example/debian/ repo component2
+    #   deb http://example/debian/ repo component3
+    #   deb http://example/debian/ {RELEASE}/
+    #
+    # The following variables may be in the strings, and they will be substitued
+    # accordingly:
+    #
+    #     {DIST}     debian, ubuntu, etc
+    #     {RELEASE}  jessie, stretch, wily, utopic, etc
 
-	extra-all =
-		http://my/repo/{DIST} main
-		http://some/ppa/ RELEASE/
+    extra-all =
+        http://my/repo/{DIST} main
+        http://some/ppa/ RELEASE/
 
-	[sbuild]
+    [sbuild]
 
-	key = 0xDEADBEEF
+    key = 0xDEADBEEF
 
 
 AUTHOR

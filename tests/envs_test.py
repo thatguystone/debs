@@ -2,6 +2,13 @@ from nose.tools import *
 
 from debs import cfg, envs
 
+def test_split():
+	parts = envs.split('debian-unstable-amd64')
+	assert_equal(['sid', 'amd64'], parts)
+
+	parts = envs.split('debian-stable-amd64')
+	assert_equal([envs._DEBIAN[0], 'amd64'], parts)
+
 def test_match():
 	ds = envs.match('')
 	assert_equal(len(envs.ENVS), len(ds))
@@ -20,6 +27,13 @@ def test_match():
 
 	ds = envs.match('test-amd64', installed=['test-amd64'])
 	assert_in('test-amd64', ds)
+
+def test_match_aliases():
+	ds = envs.match('debian-unstable')
+	assert_in('debian-unstable-amd64', ds)
+
+	ds = envs.match('ubuntu-latest')
+	assert_in('ubuntu-latest-amd64', ds)
 
 def test_main_mirror():
 	c = cfg.Cfg()

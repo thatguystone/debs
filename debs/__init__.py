@@ -4,14 +4,14 @@ import logging
 import os.path
 import sys
 
-from . import cfg, package, sbuild
+from . import cfg, consts, package, sbuild, util
 
 __all__ = ['Debs']
 
 log = logging.getLogger(__name__)
 
 class Debs(object):
-	_VERSION_PATH = path = os.path.expanduser('~/.debs/versions')
+	_VERSION_PATH = os.path.join(consts.CFG_DIR, 'versions')
 
 	def __init__(self, envs=[], remotes=[], pkgs=[], extra_cfgs=[]):
 		self.cfg = cfg.Cfg()
@@ -50,6 +50,7 @@ class Debs(object):
 		if self.cfg.no_versions:
 			return
 
+		os.makedirs(consts.CFG_DIR, exist_ok=True)
 		with open(self._VERSION_PATH, 'w') as f:
 			json.dump(self.versions, f, indent=4, sort_keys=True)
 

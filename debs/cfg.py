@@ -6,12 +6,12 @@ import os
 import os.path
 import shlex
 
-from . import util
+from . import consts, util
 
 DEBSRC = '.debsrc'
 DEFAULTS = [
 	'/etc/debsrc',
-	'~/.debs/debsrc',
+	os.path.join(consts.CFG_DIR, 'debsrc'),
 ]
 
 GROUP = 'debs'

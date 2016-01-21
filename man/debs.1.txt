@@ -37,8 +37,13 @@ OPTIONS
     prefix/suffix. For example, if given "stretch-", this will match "stretch-
     amd64" and "stretch-i386". If given "-amd64", all known "amd64"
     environments are matched.
-    ::
+
     The value "all" may be given to select all known environments.
+
+    A few aliases exist for convenience: debian-stable, debian-testing,
+    debian-unstable, ubuntu-latest, ubuntu-lts. These may be used in any env
+    spec, and they will be expanded to the current release (ie. debian-stable
+    => jessie).
 
 *--list-envs*::
 

@@ -1,25 +1,17 @@
 import itertools
+import json
+import os
+import re
+import time
+import urllib.request
 
-from . import util
+from . import consts, util
 
 _ARCHS = ['amd64', 'i386']
 
-_DEBIAN = [
-	'jessie',
-	'stretch',
-	'sid',
-]
-
-_UBUNTU = [
-	'precise',
-	'trusty',
-	'wily',
-	'xenial',
-]
-
-_ENVS = _DEBIAN + _UBUNTU
-
-ENVS = sorted(['-'.join(c) for c in itertools.product(_ENVS, _ARCHS)])
+_DEBIAN = []
+_UBUNTU = []
+_ENVS = []
 
 _COMPONENTS = {
 	'debian': (_DEBIAN, 'main contrib non-free'),
@@ -31,8 +23,75 @@ _MIRRORS = {
 	'ubuntu': (_UBUNTU, 'http://us.archive.ubuntu.com/ubuntu/'),
 }
 
+_ALIASES = {}
+ENVS = []
+
+def _load_releases():
+	os.makedirs(consts.CFG_DIR, exist_ok=True)
+	releases = os.path.join(consts.CFG_DIR, 'releases')
+
+	refresh = True
+	if os.path.exists(releases):
+		age = time.time() - os.path.getmtime(releases)
+		if age < 60*60*24*7:
+			refresh = False
+			with open(releases) as f:
+				all = json.load(f)
+
+	if refresh:
+		all = _refresh_releases(releases)
+
+	_DEBIAN.extend(all['debian'])
+	_UBUNTU.extend(all['ubuntu'])
+	_ALIASES.update(all['aliases'])
+	_ENVS.extend(_DEBIAN + _UBUNTU + list(_ALIASES.keys()))
+	ENVS.extend(sorted(['-'.join(c) for c in itertools.product(_ENVS, _ARCHS)]))
+
+def _refresh_releases(path):
+	aliases = {}
+	debian = []
+	ubuntu = []
+	_refresh_debian_releases(aliases, debian)
+	_refresh_ubuntu_releases(aliases, ubuntu)
+
+	all = {
+		'debian': list(map(lambda r: r.lower(), debian)),
+		'ubuntu': list(map(lambda r: r.lower(), ubuntu)),
+		'aliases': dict(map(lambda kv: (kv[0], kv[1].lower()), aliases.items())),
+	}
+	with open(path, 'w') as f:
+		json.dump(all, f, indent=4, sort_keys=True)
+
+	return all
+
+def _refresh_debian_releases(aliases, rels):
+	r = re.compile(r'Debian &ldquo;(\w*)&rdquo;')
+	def get(which):
+		url = 'https://www.debian.org/releases/{}/'.format(which)
+		s = urllib.request.urlopen(url).read()
+		return r.findall(s.decode('utf-8'))[0]
+
+	stable = aliases['debian-stable'] = get('stable')
+	testing = aliases['debian-testing'] = get('testing')
+	unstable = aliases['debian-unstable'] = 'sid'
+
+	rels += [stable, testing, unstable]
+
+def _refresh_ubuntu_releases(aliases, rels):
+	rel = urllib.request.urlopen('http://releases.ubuntu.com/').read()
+	all = re.findall(r'Ubuntu ([\d\.]*) (.*)\((\w*) \w*\)', rel.decode('utf-8'))
+	all = sorted(set(all), reverse=True)
+
+	aliases['ubuntu-latest'] = all[0][2]
+	aliases['ubuntu-lts'] = next((r[2] for r in all if 'lts' in r[1].lower()))
+
+	rels += map(lambda r: r[2], all)
+
 def split(env):
-	return env.split('-')
+	parts = env.rsplit('-', 1)
+	if parts and '-' in parts[0]:
+		parts[0] = _ALIASES.get(parts[0], parts[0])
+	return parts
 
 def match(*specs, installed=None):
 	specs = list(filter(None, specs))
@@ -52,7 +111,7 @@ def match(*specs, installed=None):
 				if e.startswith(spec) or e.endswith(spec):
 					envs.add(e)
 
-	return envs
+	return sorted(envs)
 
 def main_mirror(release, cfg=None):
 	for dist, specs in _MIRRORS.items():
@@ -103,3 +162,5 @@ def sources(release, arch, cfg=None):
 
 class UnknownRelease(Exception):
 	pass
+
+_load_releases()
