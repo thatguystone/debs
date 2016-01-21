@@ -1,7 +1,7 @@
 debs (1.1.0) stable; urgency=medium
 
   * Switch to a library-with-executable format.
-  * Add some unit test.
+  * Add some unit tests.
 
  -- Andrew Stone <a@stoney.io>  Wed, 02 Dec 2015 21:52:06 -0500
 
