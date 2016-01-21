@@ -25,8 +25,8 @@ def test_load():
 		assert_equal(p.name, 'native')
 		assert_equal(p.version, '1.2.3')
 		assert_equal(
-			p.gen_src(tmpdir),
-			os.path.join(tmpdir, 'native_1.2.3.dsc'))
+			p.gen_src('stable', tmpdir),
+			os.path.join(tmpdir, 'native_1.2.3~stable.dsc'))
 
 @raises(package.InvalidPackage)
 def test_no_format():

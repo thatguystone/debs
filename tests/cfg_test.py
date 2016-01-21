@@ -184,7 +184,7 @@ def test_all_pkgs():
 		'tests/fixtures/debsrc-pkgs/pkg0',
 		'tests/fixtures/debsrc-pkgs/subs/deeper/quilt0',
 		'tests/fixtures/debsrc-pkgs/subs/deeper/quilt1',
-		'tests/fixtures/debsrc-pkgs/subs/dsc/test.dsc',
+		'tests/fixtures/debsrc-pkgs/subs/dsc/native_1.2.3.dsc',
 		'tests/fixtures/debsrc-pkgs/subs/native',
 	]
 	assert_equal(exp, pkgs)

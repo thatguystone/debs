@@ -1,4 +1,5 @@
 import abc
+import copy
 import glob
 import logging
 import os.path
@@ -7,7 +8,7 @@ import shutil
 import debian.changelog
 import debian.deb822
 
-from . import run
+from . import run, util
 
 log = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class _Pkg(abc.ABC):
 		self.cfg = cfg.in_path(self.path)
 
 	@abc.abstractmethod
-	def gen_src(self, tmpdir):
+	def gen_src(self, release, tmpdir):
 		pass
 
 class _Native(_Pkg):
@@ -73,10 +74,10 @@ class _Native(_Pkg):
 	def _load_changelog(self):
 		self.chglog = debian.changelog.Changelog()
 
-		cl = os.path.join(self.path, 'debian', 'changelog')
-		with open(cl) as f:
+		self.chlogp = os.path.join(self.path, 'debian', 'changelog')
+		with open(self.chlogp) as f:
 			try:
-				self.chglog.parse_changelog(f, max_blocks=1)
+				self.chglog.parse_changelog(f)
 			except debian.changelog.ChangelogParseError as e:
 				raise InvalidPackage(self.path, e)
 
@@ -84,15 +85,31 @@ class _Native(_Pkg):
 	def version(self):
 		return self.chglog.full_version
 
-	def gen_src(self, tmpdir):
+	def gen_src(self, release, tmpdir):
 		run.check('debian/rules', 'clean', cwd=self.path)
-		run.check('dpkg-source', '-b',
-			os.path.realpath(self.path), # dpkg-source doesn't like symlinks
-			cwd=tmpdir)
+
+		av = self.cfg.append_version.format(RELEASE=release)
+		if av:
+			orig = str(self.chglog)
+
+		try:
+			if av:
+				self.chglog.set_version(self.chglog.full_version + av)
+				with open(self.chlogp, 'w') as f:
+					self.chglog.write_to_open_file(f)
+
+			run.check('dpkg-source', '-b',
+				os.path.realpath(self.path), # dpkg-source doesn't like symlinks
+				cwd=tmpdir)
+		finally:
+			if av:
+				with open(self.chlogp, 'w') as f:
+					f.write(orig)
+
 		return glob.glob('{}/*.dsc'.format(tmpdir))[0]
 
 class _Quilt(_Native):
-	def gen_src(self, tmpdir):
+	def gen_src(self, release, tmpdir):
 		self._clean()
 
 		tar = '{}_{}.orig.tar.xz'.format(
@@ -106,7 +123,7 @@ class _Quilt(_Native):
 			'.',
 			cwd=tmpdir)
 
-		return super().gen_src(tmpdir)
+		return super().gen_src(release, tmpdir)
 
 	def _clean(self):
 		# The actual source is sometimes modified by patches. Just remove
@@ -126,21 +143,16 @@ class _Quilt(_Native):
 class _Dsc(_Pkg):
 	def __init__(self, path, cfg):
 		super().__init__(path, cfg)
-
 		with open(self.path) as f:
 			dsc = debian.deb822.Dsc(f)
-
 			self.name = dsc['Source']
 			self.version = dsc['Version']
-			self.files = dsc.get('Files', [])
 
-	def gen_src(self, tmpdir):
-		srcdir = os.path.dirname(self.path)
-		for f in self.files:
-			src = os.path.join(srcdir, f['name'])
-			shutil.copy(src, tmpdir)
-
-		return shutil.copy(self.path, tmpdir)
+	def gen_src(self, release, tmpdir):
+		with util.tmpdir() as tdir:
+			exploded = os.path.join(tdir, 'exploded')
+			run.check('dpkg-source', '--extract', self.path, exploded)
+			return load(exploded, self.cfg).gen_src(release, tmpdir)
 
 class InvalidPackage(Exception):
 	def __init__(self, pkg, msg):

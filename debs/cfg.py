@@ -102,6 +102,11 @@ PROPS = [
 		'after': shlex.split,
 	},
 	{
+		'name': 'append-version',
+		'group': SBUILD,
+		'default': '~{RELEASE}',
+	},
+	{
 		'name': 'apt-upgrade',
 		'type': bool,
 		'group': SBUILD,

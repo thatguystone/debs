@@ -350,7 +350,7 @@ def build(pkg, env, remotes=[]):
 
 	with util.tmpdir() as tmpdir:
 		sbuildrc = os.path.join(tmpdir, '.sbuildrc')
-		dsc = pkg.gen_src(tmpdir)
+		dsc = pkg.gen_src(release, tmpdir)
 		_make_sbuildrc(cfg, sbuildrc)
 
 		if cfg.dry_run:
