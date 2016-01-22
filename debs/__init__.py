@@ -4,7 +4,7 @@ import logging
 import os.path
 import sys
 
-from . import cfg, consts, package, sbuild, util
+from . import cfg, consts, envs, package, sbuild, util
 
 __all__ = ['Debs']
 
@@ -55,6 +55,7 @@ class Debs(object):
 			json.dump(self.versions, f, indent=4, sort_keys=True)
 
 	def _version_key(self, pkg, env):
+		env = '-'.join(envs.split(env))
 		return '{}[{}]'.format(pkg.name, env)
 
 	def _show_prebuild_summary(self):

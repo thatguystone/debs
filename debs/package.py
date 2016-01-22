@@ -72,38 +72,36 @@ class _Native(_Pkg):
 		self._load_changelog()
 
 	def _load_changelog(self):
-		self.chglog = debian.changelog.Changelog()
+		self._chglog = debian.changelog.Changelog()
 
-		self.chlogp = os.path.join(self.path, 'debian', 'changelog')
-		with open(self.chlogp) as f:
+		self._chlogp = os.path.join(self.path, 'debian', 'changelog')
+		with open(self._chlogp) as f:
 			try:
-				self.chglog.parse_changelog(f)
+				self._chglog.parse_changelog(f)
+				self.version = self._chglog.full_version
 			except debian.changelog.ChangelogParseError as e:
 				raise InvalidPackage(self.path, e)
-
-	@property
-	def version(self):
-		return self.chglog.full_version
 
 	def gen_src(self, release, tmpdir):
 		run.check('debian/rules', 'clean', cwd=self.path)
 
 		av = self.cfg.append_version.format(RELEASE=release)
 		if av:
-			orig = str(self.chglog)
+			orig = str(self._chglog)
 
 		try:
 			if av:
-				self.chglog.set_version(self.chglog.full_version + av)
-				with open(self.chlogp, 'w') as f:
-					self.chglog.write_to_open_file(f)
+				self._chglog.set_version(self.version + av)
+				with open(self._chlogp, 'w') as f:
+					self._chglog.write_to_open_file(f)
 
 			run.check('dpkg-source', '-b',
 				os.path.realpath(self.path), # dpkg-source doesn't like symlinks
 				cwd=tmpdir)
 		finally:
 			if av:
-				with open(self.chlogp, 'w') as f:
+				self._chglog.set_version(self.version)
+				with open(self._chlogp, 'w') as f:
 					f.write(orig)
 
 		return glob.glob('{}/*.dsc'.format(tmpdir))[0]
@@ -114,7 +112,7 @@ class _Quilt(_Native):
 
 		tar = '{}_{}.orig.tar.xz'.format(
 			self.name,
-			self.chglog.upstream_version)
+			self._chglog.upstream_version)
 
 		run.check('tar',
 			'cfJ', tar,
