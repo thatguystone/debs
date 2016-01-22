@@ -149,7 +149,7 @@ class _Dsc(_Pkg):
 	def gen_src(self, release, tmpdir):
 		with util.tmpdir() as tdir:
 			exploded = os.path.join(tdir, 'exploded')
-			run.check('dpkg-source', '--extract', self.path, exploded)
+			run.check('dpkg-source', '-x', self.path, exploded)
 			return load(exploded, self.cfg).gen_src(release, tmpdir)
 
 class InvalidPackage(Exception):
