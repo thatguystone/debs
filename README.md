@@ -1,8 +1,6 @@
 # debs [![Build Status](https://travis-ci.org/thatguystone/debs.svg?branch=master)](https://travis-ci.org/thatguystone/debs)
 
-For building your .debs.
-
-This is a wrapper around sbuild and dput, but it automates it all for you.
+For building your .debs. Think of this as a local buildd.
 
 ## Config
 
