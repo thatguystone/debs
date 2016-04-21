@@ -1,3 +1,4 @@
+import atexit
 import configparser
 import copy
 import io
@@ -5,6 +6,8 @@ import multiprocessing
 import os
 import os.path
 import shlex
+import shutil
+import tempfile
 
 from . import consts, util
 
@@ -319,5 +322,10 @@ class ConfigException(Exception):
 	pass
 
 def cfg_dir():
-	os.makedirs(consts.CFG_DIR, exist_ok=True)
-	return consts.CFG_DIR
+	d = consts.CFG_DIR
+	if d.startswith('/sbuild-nonexistent'):
+		d = tempfile.mkdtemp()
+		atexit.register(shutil.rmtree, d)
+
+	os.makedirs(d, exist_ok=True)
+	return d
