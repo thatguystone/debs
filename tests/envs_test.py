@@ -7,7 +7,7 @@ def test_split():
 	assert_equal(['sid', 'amd64'], parts)
 
 	parts = envs.split('debian-stable-amd64')
-	assert_equal([envs._DEBIAN[0], 'amd64'], parts)
+	assert_equal([envs.ENVS.DEBIAN[0], 'amd64'], parts)
 
 def test_match():
 	ds = envs.match('')
@@ -23,7 +23,7 @@ def test_match():
 	ds = envs.match('sid-')
 	assert_in('sid-amd64', ds)
 	assert_in('sid-i386', ds)
-	assert_not_in(envs._ENVS[0], ds)
+	assert_not_in(envs.ENVS[0], ds)
 
 	ds = envs.match('test-amd64', installed=['test-amd64'])
 	assert_in('test-amd64', ds)
@@ -49,8 +49,8 @@ def test_main_mirror():
 	''')
 
 	assert_equal('http://sid', envs.main_mirror('sid', cfg=c))
-	assert_equal('http://debian', envs.main_mirror(envs._DEBIAN[0], cfg=c))
-	assert_equal(envs._MIRRORS['debian'][1], envs.main_mirror(envs._DEBIAN[0]))
+	assert_equal('http://debian', envs.main_mirror(envs.ENVS.DEBIAN[0], cfg=c))
+	assert_equal(envs.ENVS.MIRRORS['debian'][1], envs.main_mirror(envs.ENVS.DEBIAN[0]))
 
 @raises(envs.UnknownRelease)
 def test_main_mirror_error():

@@ -6,8 +6,8 @@ from debs import cfg, envs, package, sbuild
 from . import util
 
 _ENVS = [
-	'{}-amd64'.format(envs._DEBIAN[0]),
-	'{}-amd64'.format(envs._DEBIAN[1]),
+	'{}-amd64'.format(envs.ENVS.DEBIAN[0]),
+	'{}-amd64'.format(envs.ENVS.DEBIAN[1]),
 ]
 
 def test_match():
