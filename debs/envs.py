@@ -10,7 +10,7 @@ import urllib.request
 
 import debian.deb822
 
-from . import consts, util
+from . import cfg, util
 
 log = logging.getLogger(__name__)
 
@@ -133,7 +133,7 @@ class _Envs(list):
 			return True
 
 	def _load_debian(self):
-		path = os.path.join(consts.CFG_DIR, 'debian.release')
+		path = os.path.join(cfg.cfg_dir(), 'debian.release')
 		if self._should_refresh(path):
 			self._refresh_debian(path)
 
@@ -164,7 +164,7 @@ class _Envs(list):
 			json.dump(dists, f)
 
 	def _load_ubuntu(self):
-		path = os.path.join(consts.CFG_DIR, 'ubuntu.release')
+		path = os.path.join(cfg.cfg_dir(), 'ubuntu.release')
 		if self._should_refresh(path):
 			self._refresh_ubuntu(path)
 

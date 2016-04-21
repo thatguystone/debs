@@ -317,3 +317,7 @@ for p in PROPS:
 
 class ConfigException(Exception):
 	pass
+
+def cfg_dir():
+	os.makedirs(consts.CFG_DIR, exist_ok=True)
+	return consts.CFG_DIR
